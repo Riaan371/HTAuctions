@@ -54,8 +54,8 @@ export default function Welcome() {
         <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.7)', zIndex: 999, justifyContent: 'center', alignItems: 'center', padding: 24 }}>
           <View style={{ backgroundColor: '#fff', borderRadius: 20, padding: 24, width: '100%', maxWidth: 360 }}>
             <Text style={{ fontSize: 20, fontWeight: '800', color: Colors.navy, marginBottom: 8 }}>Install on Mobile</Text>
-            <Text style={{ color: ‘#374151’, fontSize: 14, lineHeight: 22, marginBottom: 16 }}>
-              iPhone/iPad: Tap Share → "Add to Home Screen"{‘\n’}
+            <Text style={{ color: '#374151', fontSize: 14, lineHeight: 22, marginBottom: 16 }}>
+              iPhone/iPad: Tap Share → "Add to Home Screen"{'\n'}
               Android (Chrome): Tap the 3-dot menu → "Add to Home screen"
             </Text>
             <Pressable onPress={() => setShowIOSGuide(false)} style={{ backgroundColor: Colors.navy, borderRadius: 10, padding: 12, alignItems: 'center' }}>
