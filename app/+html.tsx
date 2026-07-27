@@ -29,7 +29,7 @@ export default function Root({ children }: PropsWithChildren) {
           window.OneSignalDeferred = window.OneSignalDeferred || [];
           OneSignalDeferred.push(async function(OneSignal) {
             await OneSignal.init({
-              appId: "REPLACE_WITH_HTA_ONESIGNAL_APP_ID",
+              appId: "b381ec59-c895-4341-aa33-9c5cd9f4d7bc",
               notifyButton: { enable: false },
               promptOptions: {
                 slidedown: {
