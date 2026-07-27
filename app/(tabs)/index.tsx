@@ -21,7 +21,7 @@ async function fetchAuctionEvents() {
     .in('status', ['live', 'scheduled'])
     .order('scheduled_at');
 
-  // Timed auctions â€” all active ones (end_at may be null or future)
+  // Timed auctions � all active ones (end_at may be null or future)
   const { data: timed } = await supabase
     .from('auctions')
     .select('id, title, end_at, type, status')
@@ -127,12 +127,12 @@ function AuctionEventCard({ session, photos }: { session: any; photos?: string[]
       )}
       {isTimed && (
         <View style={[s.liveBadge, { backgroundColor: Colors.navy, borderWidth: 1, borderColor: Colors.gold }]}>
-          <Text style={[s.liveBadgeTxt, { color: Colors.gold }]}>â± TIMED</Text>
+          <Text style={[s.liveBadgeTxt, { color: Colors.gold }]}>⏱ TIMED</Text>
         </View>
       )}
       {!isTimed && !isLive && (
         <View style={[s.liveBadge, { backgroundColor: '#fff', borderWidth: 1.5, borderColor: '#DC2626' }]}>
-          <Text style={[s.liveBadgeTxt, { color: '#DC2626' }]}>ðŸ”´ LIVE EVENT</Text>
+          <Text style={[s.liveBadgeTxt, { color: '#DC2626' }]}>�x� LIVE EVENT</Text>
         </View>
       )}
       <View style={s.eventContent}>
@@ -142,12 +142,12 @@ function AuctionEventCard({ session, photos }: { session: any; photos?: string[]
         {!isTimed && dt && !isLive && <Text style={s.eventDate}>{dateStr.toUpperCase()}</Text>}
         <Text style={s.eventTitle} numberOfLines={2}>{title}</Text>
         <View style={s.eventMeta}>
-          {isTimed && dt && <Text style={s.eventMetaTxt}>ðŸ—“ Closes {dateStr}</Text>}
-          {timeStr && !isLive && !isTimed && <Text style={s.eventMetaTxt}>ðŸ•™ {timeStr}</Text>}
-          {lotCount > 0 && <Text style={s.eventMetaTxt}>ðŸ”¨ {lotCount} lot{lotCount !== 1 ? 's' : ''}</Text>}
+          {isTimed && dt && <Text style={s.eventMetaTxt}>�x Closes {dateStr}</Text>}
+          {timeStr && !isLive && !isTimed && <Text style={s.eventMetaTxt}>�x"" {timeStr}</Text>}
+          {lotCount > 0 && <Text style={s.eventMetaTxt}>�x� {lotCount} lot{lotCount !== 1 ? 's' : ''}</Text>}
         </View>
         <View style={s.eventBtn}>
-          <Text style={s.eventBtnTxt}>{isTimed ? 'Bid Now â†’' : 'View Auction â†’'}</Text>
+          <Text style={s.eventBtnTxt}>{isTimed ? 'Bid Now � ' : 'View Auction � '}</Text>
         </View>
       </View>
     </Pressable>
@@ -248,7 +248,7 @@ export default function Home() {
         refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={Colors.gold} />}
         showsVerticalScrollIndicator={false}
       >
-        {/* â”€â”€ HEADER â”€â”€ */}
+        {/* ���� HEADER ���� */}
         <View style={s.header}>
           <Image source={require('../../assets/logo.png')} style={s.logo} resizeMode="contain" />
           <View style={{ flex: 1, marginLeft: 12 }}>
@@ -257,7 +257,7 @@ export default function Home() {
             <Text style={s.headerSub}>South Africa's Live Auction Marketplace</Text>
           </View>
           <Pressable onPress={refetch} style={s.refreshBtn}>
-            <Text style={{ fontSize: 15 }}>{isRefetching ? 'â³' : 'ðŸ”„'}</Text>
+            <Text style={{ fontSize: 15 }}>{isRefetching ? '⏳' : '�x'}</Text>
           </Pressable>
         </View>
 
@@ -271,10 +271,10 @@ export default function Home() {
         {showNotifAsk && (
           <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.7)', zIndex: 999, justifyContent: 'center', alignItems: 'center', padding: 24 }}>
             <View style={{ backgroundColor: '#fff', borderRadius: 20, padding: 24, width: '100%', maxWidth: 360, alignItems: 'center' }}>
-              <Text style={{ fontSize: 40, marginBottom: 8 }}>ðŸ””</Text>
+              <Text style={{ fontSize: 40, marginBottom: 8 }}>�x</Text>
               <Text style={{ fontSize: 18, fontWeight: '800', color: Colors.navy, marginBottom: 8, textAlign: 'center' }}>Never miss an auction</Text>
               <Text style={{ color: '#374151', fontSize: 14, lineHeight: 20, marginBottom: 20, textAlign: 'center' }}>
-                Get notified the moment a new auction opens or a live event starts â€” so you never lose out on a bid.
+                Get notified the moment a new auction opens or a live event starts � so you never lose out on a bid.
               </Text>
               <Pressable onPress={handleEnableNotifications} style={{ backgroundColor: Colors.gold, borderRadius: 10, padding: 14, alignItems: 'center', width: '100%', marginBottom: 10 }}>
                 <Text style={{ color: Colors.navy, fontWeight: '800' }}>Enable Notifications</Text>
@@ -286,16 +286,16 @@ export default function Home() {
           </View>
         )}
 
-        {/* Proactive install takeover â€” first visit, or after engagement on later visits */}
+        {/* Proactive install takeover � first visit, or after engagement on later visits */}
         {showInstallTakeover && (
           <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.7)', zIndex: 999, justifyContent: 'center', alignItems: 'center', padding: 24 }}>
             <View style={{ backgroundColor: '#fff', borderRadius: 20, padding: 24, width: '100%', maxWidth: 360, alignItems: 'center' }}>
-              <Text style={{ fontSize: 40, marginBottom: 8 }}>ðŸ“²</Text>
+              <Text style={{ fontSize: 40, marginBottom: 8 }}>�x�</Text>
               <Text style={{ fontSize: 18, fontWeight: '800', color: Colors.navy, marginBottom: 8, textAlign: 'center' }}>
                 Install HT Auctions West Coast
               </Text>
               <Text style={{ color: '#374151', fontSize: 14, lineHeight: 20, marginBottom: 20, textAlign: 'center' }}>
-                Get one-tap access from your home screen â€” faster loading, live auction alerts, no browser tabs to dig through.
+                Get one-tap access from your home screen � faster loading, live auction alerts, no browser tabs to dig through.
               </Text>
               <Pressable onPress={acceptInstallTakeover} style={{ backgroundColor: Colors.gold, borderRadius: 10, padding: 14, alignItems: 'center', width: '100%', marginBottom: 10 }}>
                 <Text style={{ color: Colors.navy, fontWeight: '800' }}>Install Now</Text>
@@ -315,10 +315,10 @@ export default function Home() {
               <Text style={{ color: '#374151', fontSize: 14, lineHeight: 22, marginBottom: 16 }}>
                 1. Tap the <Text style={{ fontWeight: '700' }}>Share</Text> button at the bottom of Safari {'\n'}
                 2. Scroll down and tap <Text style={{ fontWeight: '700' }}>"Add to Home Screen"</Text>{'\n'}
-                3. Tap <Text style={{ fontWeight: '700' }}>Add</Text> â€” done!
+                3. Tap <Text style={{ fontWeight: '700' }}>Add</Text> � done!
               </Text>
               <Text style={{ color: '#6B7280', fontSize: 12, marginBottom: 16 }}>
-                On Android (Chrome): tap the 3-dot menu â†’ "Add to Home screen"
+                On Android (Chrome): tap the 3-dot menu �  "Add to Home screen"
               </Text>
               <Pressable onPress={() => setShowIOSGuide(false)} style={{ backgroundColor: Colors.navy, borderRadius: 10, padding: 12, alignItems: 'center' }}>
                 <Text style={{ color: '#fff', fontWeight: '700' }}>Got it</Text>
@@ -327,23 +327,23 @@ export default function Home() {
           </View>
         )}
 
-        {/* â”€â”€ LIVE NOW â”€â”€ */}
+        {/* ���� LIVE NOW ���� */}
         {liveEvents.length > 0 && (
           <View style={s.section}>
             {liveEvents.map((e: any) => (
               <Pressable key={e.auction_id} onPress={() => router.push(`/live/${e.auction_id}`)} style={s.liveBanner}>
                 <View style={s.livePulse} />
                 <View style={{ flex: 1 }}>
-                  <Text style={s.liveBannerTitle}>ðŸ”´ AUCTION LIVE NOW</Text>
-                  <Text style={s.liveBannerSub}>{e.title ?? e.auctions?.title ?? 'Live Auction'} â€” Tap to join</Text>
+                  <Text style={s.liveBannerTitle}>�x� AUCTION LIVE NOW</Text>
+                  <Text style={s.liveBannerSub}>{e.title ?? e.auctions?.title ?? 'Live Auction'} � Tap to join</Text>
                 </View>
-                <Text style={{ fontSize: 22 }}>ðŸ”Š</Text>
+                <Text style={{ fontSize: 22 }}>�x`</Text>
               </Pressable>
             ))}
           </View>
         )}
 
-        {/* â”€â”€ UPCOMING AUCTIONS â”€â”€ */}
+        {/* ���� UPCOMING AUCTIONS ���� */}
         {upcomingEvents.length > 0 && (
           <View style={{ marginBottom: 24 }}>
             <View style={s.sectionHeader}>
@@ -363,12 +363,12 @@ export default function Home() {
           </View>
         )}
 
-        {/* â”€â”€ NO EVENTS PLACEHOLDER â”€â”€ */}
+        {/* ���� NO EVENTS PLACEHOLDER ���� */}
         {(!events || events.length === 0) && (
           <View style={s.emptyEvents}>
-            <Text style={{ fontSize: 48, marginBottom: 12 }}>ðŸ”¨</Text>
+            <Text style={{ fontSize: 48, marginBottom: 12 }}>�x�</Text>
             <Text style={[s.emptyTitle, { color: ink }]}>No auctions scheduled yet</Text>
-            <Text style={[s.emptyBody, { color: muted }]}>Check back soon â€” new events are added regularly.</Text>
+            <Text style={[s.emptyBody, { color: muted }]}>Check back soon � new events are added regularly.</Text>
           </View>
         )}
 

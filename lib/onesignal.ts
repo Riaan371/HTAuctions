@@ -50,6 +50,6 @@ export async function linkOneSignalToUser(userId: string) {
   try {
     await OneSignal.login(userId);
   } catch {
-    // ignore â€” SDK may not be ready yet, harmless to skip
+    // ignore � SDK may not be ready yet, harmless to skip
   }
 }

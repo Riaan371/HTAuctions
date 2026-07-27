@@ -37,7 +37,7 @@ serve(async (req) => {
         app_id: ONESIGNAL_APP_ID,
         target_channel: 'push',
         included_segments: ['Total Subscriptions'],
-        headings: { en: 'ðŸ”” Test Notification' },
+        headings: { en: '�x Test Notification' },
         contents: { en: 'Push notifications are working on HT Auctions West Coast!' },
         url: 'https://htauctions.pages.dev',
         chrome_web_icon: 'https://htauctions.pages.dev/icon-192-v5.png',

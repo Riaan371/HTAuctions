@@ -28,7 +28,7 @@ html = html.replace('</head>', pwaTags + '\n</head>');
 // Also fix description
 html = html.replace(
   'content="South Africa\'s live &amp; timed auction marketplace. Bid on vehicles, livestock, property, electronics and more."',
-  'content="HT Auctions West Coast â€” South Africa\'s live auction marketplace."'
+  'content="HT Auctions West Coast � South Africa\'s live auction marketplace."'
 );
 
 fs.writeFileSync(indexPath, html, 'utf8');

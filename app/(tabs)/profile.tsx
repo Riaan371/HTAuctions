@@ -46,7 +46,7 @@ function ActiveLotsPanel({ userId, ink, muted, card, border }: { userId: string;
   });
 
   // Closed/cancelled auctions can end up with zero remaining lots (every lot
-  // deleted individually) â€” fetch them separately so they don't silently
+  // deleted individually) � fetch them separately so they don't silently
   // disappear from this lot-driven view, since there'd otherwise be nothing
   // to anchor the group to.
   const { data: emptyClosedAuctions } = useQuery({
@@ -89,7 +89,7 @@ function ActiveLotsPanel({ userId, ink, muted, card, border }: { userId: string;
     refreshAll();
   };
 
-  // Completed auctions are done â€” "delete" here means permanently gone, not
+  // Completed auctions are done � "delete" here means permanently gone, not
   // returned to inventory: deletes the lot rows, their photo files in
   // storage, the live session, and the auction itself.
   const deleteCompletedAuctionGroup = async (auctionId: string, title: string, groupLots: any[]) => {
@@ -150,8 +150,8 @@ function ActiveLotsPanel({ userId, ink, muted, card, border }: { userId: string;
     <View style={{ marginBottom: 10 }}>
       <Pressable onPress={() => setExpanded(v => !v)}
         style={[s.btn, { backgroundColor: Colors.navy, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }]}>
-        <Text style={[s.btnText, { color: '#fff' }]}>ðŸ”¨ My Lots ({activeCount})</Text>
-        <Text style={{ color: '#fff', fontSize: 13, marginLeft: 8 }}>{expanded ? 'â–²' : 'â–¼'}</Text>
+        <Text style={[s.btnText, { color: '#fff' }]}>�x� My Lots ({activeCount})</Text>
+        <Text style={{ color: '#fff', fontSize: 13, marginLeft: 8 }}>{expanded ? '��' : '��'}</Text>
       </Pressable>
 
       {expanded && (
@@ -161,7 +161,7 @@ function ActiveLotsPanel({ userId, ink, muted, card, border }: { userId: string;
           {activeGroupEntries.map(([aid, group]) => (
             <View key={aid} style={{ marginBottom: 10 }}>
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', marginBottom: 6, gap: 6 }}>
-                <Text style={{ color: Colors.gold, fontWeight: '700', fontSize: 12, flexBasis: '100%' }}>ðŸ“¦ {group.title}</Text>
+                <Text style={{ color: Colors.gold, fontWeight: '700', fontSize: 12, flexBasis: '100%' }}>�x� {group.title}</Text>
                 <View style={{ backgroundColor: group.status === 'active' ? '#16A34A' : '#6B7280', borderRadius: 5, paddingHorizontal: 6, paddingVertical: 2 }}>
                   <Text style={{ color: '#fff', fontSize: 9, fontWeight: '700' }}>{group.status.toUpperCase()}</Text>
                 </View>
@@ -174,7 +174,7 @@ function ActiveLotsPanel({ userId, ink, muted, card, border }: { userId: string;
                   </Pressable>
                 )}
                 <Pressable onPress={() => deleteAuctionGroup(aid, group.title)} style={{ backgroundColor: '#FEE2E2', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 }}>
-                  <Text style={{ color: '#DC2626', fontSize: 11, fontWeight: '700' }}>ðŸ—‘ Delete Auction</Text>
+                  <Text style={{ color: '#DC2626', fontSize: 11, fontWeight: '700' }}>�x Delete Auction</Text>
                 </Pressable>
               </View>
               {group.lots.map((lot: any) => (
@@ -183,22 +183,22 @@ function ActiveLotsPanel({ userId, ink, muted, card, border }: { userId: string;
                     <Image source={{ uri: lot.photos[0] }} style={{ width: 46, height: 46, borderRadius: 8 }} />
                   ) : (
                     <View style={{ width: 46, height: 46, borderRadius: 8, backgroundColor: '#E5E7EB', alignItems: 'center', justifyContent: 'center' }}>
-                      <Text style={{ fontSize: 20 }}>ðŸ“·</Text>
+                      <Text style={{ fontSize: 20 }}>�x�</Text>
                     </View>
                   )}
                   <View style={{ flex: 1, marginLeft: 10 }}>
                     <Text style={{ color: ink, fontWeight: '600', fontSize: 13 }} numberOfLines={1}>{lot.title}</Text>
                     <Text style={{ color: muted, fontSize: 11 }}>
-                      R{((lot.current_bid ?? lot.starting_bid) ?? 0).toLocaleString('en-ZA')} Â· {lot.category ?? 'â€”'}
+                      R{((lot.current_bid ?? lot.starting_bid) ?? 0).toLocaleString('en-ZA')} · {lot.category ?? '�'}
                     </Text>
                   </View>
                   <Pressable onPress={() => router.push('/manage-lots')}
                     style={{ backgroundColor: Colors.navy, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6, marginLeft: 8 }}>
-                    <Text style={{ color: '#fff', fontSize: 12, fontWeight: '700' }}>âœï¸ Edit</Text>
+                    <Text style={{ color: '#fff', fontSize: 12, fontWeight: '700' }}>�S�️ Edit</Text>
                   </Pressable>
                   <Pressable onPress={() => deleteLot(lot.id, lot.title)}
                     style={{ backgroundColor: '#FEE2E2', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6, marginLeft: 6 }}>
-                    <Text style={{ color: '#DC2626', fontSize: 12, fontWeight: '700' }}>ðŸ—‘</Text>
+                    <Text style={{ color: '#DC2626', fontSize: 12, fontWeight: '700' }}>�x</Text>
                   </Pressable>
                 </View>
               ))}
@@ -207,29 +207,29 @@ function ActiveLotsPanel({ userId, ink, muted, card, border }: { userId: string;
 
           {inventory.length > 0 && (
             <View>
-              <Text style={{ color: muted, fontWeight: '700', fontSize: 12, marginBottom: 6 }}>ðŸ—ƒ Inventory (unpublished)</Text>
+              <Text style={{ color: muted, fontWeight: '700', fontSize: 12, marginBottom: 6 }}>�x� Inventory (unpublished)</Text>
               {inventory.map((lot: any) => (
                 <View key={lot.id} style={{ flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: border, borderRadius: 10, padding: 8, marginBottom: 6 }}>
                   {lot.photos?.[0] ? (
                     <Image source={{ uri: lot.photos[0] }} style={{ width: 46, height: 46, borderRadius: 8 }} />
                   ) : (
                     <View style={{ width: 46, height: 46, borderRadius: 8, backgroundColor: '#E5E7EB', alignItems: 'center', justifyContent: 'center' }}>
-                      <Text style={{ fontSize: 20 }}>ðŸ“·</Text>
+                      <Text style={{ fontSize: 20 }}>�x�</Text>
                     </View>
                   )}
                   <View style={{ flex: 1, marginLeft: 10 }}>
                     <Text style={{ color: ink, fontWeight: '600', fontSize: 13 }} numberOfLines={1}>{lot.title}</Text>
                     <Text style={{ color: muted, fontSize: 11 }}>
-                      R{((lot.current_bid ?? lot.starting_bid) ?? 0).toLocaleString('en-ZA')} Â· {lot.category ?? 'â€”'}
+                      R{((lot.current_bid ?? lot.starting_bid) ?? 0).toLocaleString('en-ZA')} · {lot.category ?? '�'}
                     </Text>
                   </View>
                   <Pressable onPress={() => router.push('/manage-lots')}
                     style={{ backgroundColor: Colors.navy, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6, marginLeft: 8 }}>
-                    <Text style={{ color: '#fff', fontSize: 12, fontWeight: '700' }}>âœï¸ Edit</Text>
+                    <Text style={{ color: '#fff', fontSize: 12, fontWeight: '700' }}>�S�️ Edit</Text>
                   </Pressable>
                   <Pressable onPress={() => deleteLot(lot.id, lot.title)}
                     style={{ backgroundColor: '#FEE2E2', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6, marginLeft: 6 }}>
-                    <Text style={{ color: '#DC2626', fontSize: 12, fontWeight: '700' }}>ðŸ—‘</Text>
+                    <Text style={{ color: '#DC2626', fontSize: 12, fontWeight: '700' }}>�x</Text>
                   </Pressable>
                 </View>
               ))}
@@ -238,7 +238,7 @@ function ActiveLotsPanel({ userId, ink, muted, card, border }: { userId: string;
 
           <Pressable onPress={() => router.push('/manage-lots')}
             style={{ marginTop: 4, padding: 10, borderRadius: 10, borderWidth: 1, borderColor: Colors.gold, alignItems: 'center' }}>
-            <Text style={{ color: Colors.gold, fontWeight: '700', fontSize: 13 }}>Open Manage Lots â†’</Text>
+            <Text style={{ color: Colors.gold, fontWeight: '700', fontSize: 13 }}>Open Manage Lots � </Text>
           </Pressable>
         </View>
       )}
@@ -247,8 +247,8 @@ function ActiveLotsPanel({ userId, ink, muted, card, border }: { userId: string;
         <View style={{ marginTop: 10 }}>
           <Pressable onPress={() => setCompletedExpanded(v => !v)}
             style={[s.btn, { backgroundColor: '#6B7280', flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }]}>
-            <Text style={[s.btnText, { color: '#fff' }]}>âœ… Completed Auctions ({completedCount})</Text>
-            <Text style={{ color: '#fff', fontSize: 13, marginLeft: 8 }}>{completedExpanded ? 'â–²' : 'â–¼'}</Text>
+            <Text style={[s.btnText, { color: '#fff' }]}>�S& Completed Auctions ({completedCount})</Text>
+            <Text style={{ color: '#fff', fontSize: 13, marginLeft: 8 }}>{completedExpanded ? '��' : '��'}</Text>
           </Pressable>
 
           {completedExpanded && (
@@ -256,18 +256,18 @@ function ActiveLotsPanel({ userId, ink, muted, card, border }: { userId: string;
               {closedGroupEntries.map(([aid, group]) => (
                 <View key={aid} style={{ marginBottom: 10 }}>
                   <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', marginBottom: 2, gap: 6 }}>
-                    <Text style={{ color: Colors.gold, fontWeight: '700', fontSize: 12, flexBasis: '100%' }}>ðŸ“¦ {group.title}</Text>
+                    <Text style={{ color: Colors.gold, fontWeight: '700', fontSize: 12, flexBasis: '100%' }}>�x� {group.title}</Text>
                     <View style={{ backgroundColor: '#6B7280', borderRadius: 5, paddingHorizontal: 6, paddingVertical: 2 }}>
                       <Text style={{ color: '#fff', fontSize: 9, fontWeight: '700' }}>{group.status.toUpperCase()}</Text>
                     </View>
                     <Pressable onPress={() => deleteCompletedAuctionGroup(aid, group.title, group.lots)} style={{ backgroundColor: '#FEE2E2', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 }}>
-                      <Text style={{ color: '#DC2626', fontSize: 11, fontWeight: '700' }}>ðŸ—‘ Delete Auction</Text>
+                      <Text style={{ color: '#DC2626', fontSize: 11, fontWeight: '700' }}>�x Delete Auction</Text>
                     </Pressable>
                   </View>
                   <Text style={{ color: muted, fontSize: 11, marginBottom: 6 }}>
-                    {group.type === 'live' ? 'ðŸ”´ Live' : group.type === 'timed' ? 'â± Timed' : 'â€”'}
-                    {formatClosedAt(group.closedAt) ? ` Â· Closed ${formatClosedAt(group.closedAt)}` : ''}
-                    {` Â· ${group.lots.length} lot${group.lots.length === 1 ? '' : 's'}`}
+                    {group.type === 'live' ? '�x� Live' : group.type === 'timed' ? '⏱ Timed' : '�'}
+                    {formatClosedAt(group.closedAt) ? ` · Closed ${formatClosedAt(group.closedAt)}` : ''}
+                    {` · ${group.lots.length} lot${group.lots.length === 1 ? '' : 's'}`}
                   </Text>
                   {group.lots.map((lot: any) => (
                     <View key={lot.id} style={{ flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: border, borderRadius: 10, padding: 8, marginBottom: 6, backgroundColor: 'rgba(0,0,0,0.02)' }}>
@@ -275,22 +275,22 @@ function ActiveLotsPanel({ userId, ink, muted, card, border }: { userId: string;
                         <Image source={{ uri: lot.photos[0] }} style={{ width: 46, height: 46, borderRadius: 8 }} />
                       ) : (
                         <View style={{ width: 46, height: 46, borderRadius: 8, backgroundColor: '#E5E7EB', alignItems: 'center', justifyContent: 'center' }}>
-                          <Text style={{ fontSize: 20 }}>ðŸ“·</Text>
+                          <Text style={{ fontSize: 20 }}>�x�</Text>
                         </View>
                       )}
                       <View style={{ flex: 1, marginLeft: 10 }}>
                         <Text style={{ color: ink, fontWeight: '600', fontSize: 13 }} numberOfLines={1}>{lot.title}</Text>
                         <Text style={{ color: muted, fontSize: 11 }}>
-                          R{((lot.current_bid ?? lot.starting_bid) ?? 0).toLocaleString('en-ZA')} Â· {lot.category ?? 'â€”'}
+                          R{((lot.current_bid ?? lot.starting_bid) ?? 0).toLocaleString('en-ZA')} · {lot.category ?? '�'}
                         </Text>
                       </View>
                       <Pressable onPress={() => router.push('/manage-lots')}
                         style={{ backgroundColor: Colors.navy, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6, marginLeft: 8 }}>
-                        <Text style={{ color: '#fff', fontSize: 12, fontWeight: '700' }}>âœï¸ Edit</Text>
+                        <Text style={{ color: '#fff', fontSize: 12, fontWeight: '700' }}>�S�️ Edit</Text>
                       </Pressable>
                       <Pressable onPress={() => deleteLot(lot.id, lot.title)}
                         style={{ backgroundColor: '#FEE2E2', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6, marginLeft: 6 }}>
-                        <Text style={{ color: '#DC2626', fontSize: 12, fontWeight: '700' }}>ðŸ—‘</Text>
+                        <Text style={{ color: '#DC2626', fontSize: 12, fontWeight: '700' }}>�x</Text>
                       </Pressable>
                     </View>
                   ))}
@@ -310,8 +310,8 @@ function ExportReportMenuItem({ ink, muted, card, border }: { ink: string; muted
     <View style={{ marginBottom: 10 }}>
       <Pressable onPress={() => setExpanded(v => !v)}
         style={[s.btn, { backgroundColor: '#16A34A', flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }]}>
-        <Text style={[s.btnText, { color: '#fff' }]}>ðŸ“Š Export Sales Report</Text>
-        <Text style={{ color: '#fff', fontSize: 13, marginLeft: 8 }}>{expanded ? 'â–²' : 'â–¼'}</Text>
+        <Text style={[s.btnText, { color: '#fff' }]}>�x` Export Sales Report</Text>
+        <Text style={{ color: '#fff', fontSize: 13, marginLeft: 8 }}>{expanded ? '��' : '��'}</Text>
       </Pressable>
       {expanded && (
         <View style={{ marginTop: 8 }}>
@@ -384,7 +384,7 @@ function ExportReport({ ink, muted, card, border }: { ink: string; muted: string
 
   return (
     <View style={[{ borderWidth: 1, borderRadius: 14, padding: 14, marginBottom: 12 }, { borderColor: border, backgroundColor: card }]}>
-      <Text style={{ color: ink, fontWeight: '700', fontSize: 14, marginBottom: 12 }}>ðŸ“Š Export Sales Report</Text>
+      <Text style={{ color: ink, fontWeight: '700', fontSize: 14, marginBottom: 12 }}>�x` Export Sales Report</Text>
       <View style={{ flexDirection: 'row', gap: 10, marginBottom: 10 }}>
         <View style={{ flex: 1 }}>
           <Text style={{ color: muted, fontSize: 11, fontWeight: '600', marginBottom: 4 }}>FROM (DD/MM/YYYY)</Text>
@@ -399,7 +399,7 @@ function ExportReport({ ink, muted, card, border }: { ink: string; muted: string
       </View>
       <Pressable onPress={exportCSV} disabled={loading}
         style={{ backgroundColor: '#16A34A', borderRadius: 12, paddingVertical: 13, alignItems: 'center', opacity: loading ? 0.7 : 1 }}>
-        {loading ? <ActivityIndicator color="#fff" /> : <Text style={{ color: '#fff', fontWeight: '700', fontSize: 14 }}>â¬‡ Download CSV</Text>}
+        {loading ? <ActivityIndicator color="#fff" /> : <Text style={{ color: '#fff', fontWeight: '700', fontSize: 14 }}>�! Download CSV</Text>}
       </Pressable>
     </View>
   );
@@ -463,10 +463,10 @@ function AuctioneerPanel({ userId, ink, muted, card, border }: { userId: string;
   return (
     <View style={{ marginBottom: 12 }}>
       <Pressable onPress={() => router.push('/manage-lots')} style={[s.btn, { backgroundColor: Colors.navy, marginBottom: 10 }]}>
-        <Text style={[s.btnText, { color: '#fff' }]}>ðŸ“¦ Manage Lots</Text>
+        <Text style={[s.btnText, { color: '#fff' }]}>�x� Manage Lots</Text>
       </Pressable>
       <Pressable onPress={() => router.push('/schedule-live')} style={[s.btn, { backgroundColor: Colors.gold, marginBottom: 12 }]}>
-        <Text style={[s.btnText, { color: Colors.navy }]}>ðŸ”´ Schedule / Go Live</Text>
+        <Text style={[s.btnText, { color: Colors.navy }]}>�x� Schedule / Go Live</Text>
       </Pressable>
 
       <ActiveLotsPanel userId={userId} ink={ink} muted={muted} card={card} border={border} />
@@ -477,8 +477,8 @@ function AuctioneerPanel({ userId, ink, muted, card, border }: { userId: string;
         <View style={{ marginTop: 4 }}>
           <Pressable onPress={() => setSessionsExpanded(v => !v)}
             style={[s.btn, { backgroundColor: Colors.gold, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }]}>
-            <Text style={[s.btnText, { color: Colors.navy }]}>ðŸ“… Scheduled Sessions ({sessions.length})</Text>
-            <Text style={{ color: Colors.navy, fontSize: 13, marginLeft: 8 }}>{sessionsExpanded ? 'â–²' : 'â–¼'}</Text>
+            <Text style={[s.btnText, { color: Colors.navy }]}>�x& Scheduled Sessions ({sessions.length})</Text>
+            <Text style={{ color: Colors.navy, fontSize: 13, marginLeft: 8 }}>{sessionsExpanded ? '��' : '��'}</Text>
           </Pressable>
 
           {sessionsExpanded && (
@@ -491,11 +491,11 @@ function AuctioneerPanel({ userId, ink, muted, card, border }: { userId: string;
                     <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
                       <View style={{ flex: 1 }}>
                         <Text style={{ color: ink, fontWeight: '700', fontSize: 14 }}>{s2.title ?? 'Untitled'}</Text>
-                        <Text style={{ color: Colors.gold, fontSize: 12, fontWeight: '600', marginTop: 2 }}>ðŸ“… {dateStr}</Text>
+                        <Text style={{ color: Colors.gold, fontSize: 12, fontWeight: '600', marginTop: 2 }}>�x& {dateStr}</Text>
                       </View>
                       <View style={{ flexDirection: 'row', gap: 6, marginLeft: 8 }}>
                         <Pressable onPress={() => goLive(s2.auction_id)} style={{ paddingHorizontal: 10, paddingVertical: 5, backgroundColor: 'rgba(22,163,74,0.1)', borderRadius: 8 }}>
-                          <Text style={{ color: '#16A34A', fontWeight: '700', fontSize: 12 }}>â–¶ Go Live</Text>
+                          <Text style={{ color: '#16A34A', fontWeight: '700', fontSize: 12 }}>�� Go Live</Text>
                         </Pressable>
                         <Pressable onPress={() => deleteSession(s2.id)} style={{ paddingHorizontal: 10, paddingVertical: 5, backgroundColor: 'rgba(220,38,38,0.1)', borderRadius: 8 }}>
                           <Text style={{ color: '#DC2626', fontWeight: '700', fontSize: 12 }}>Delete</Text>
@@ -533,7 +533,7 @@ function ScreenNameEditor({ userId, currentName, ink, muted, card, border }: { u
 
   return (
     <View style={[{ borderWidth: 1, borderRadius: 14, padding: 14, marginBottom: 12 }, { borderColor: border, backgroundColor: card }]}>
-      <Text style={{ color: ink, fontWeight: '700', fontSize: 14, marginBottom: 4 }}>ðŸŽ­ Screen Name</Text>
+      <Text style={{ color: ink, fontWeight: '700', fontSize: 14, marginBottom: 4 }}>�x}� Screen Name</Text>
       <Text style={{ color: muted, fontSize: 12, marginBottom: 10 }}>This name is shown when you place bids</Text>
       {editing ? (
         <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
@@ -583,7 +583,7 @@ export default function Profile() {
     </View>
   );
 
-  // â”€â”€ GUEST VIEW â”€â”€
+  // ���� GUEST VIEW ����
   if (!session || !profile) {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: Colors.navy }}>
@@ -610,7 +610,7 @@ export default function Profile() {
     );
   }
 
-  // â”€â”€ LOGGED IN VIEW â”€â”€
+  // ���� LOGGED IN VIEW ����
   const roleColor = profile.role === 'auctioneer' ? Colors.gold : '#16A34A';
   const kycColor = profile.kyc_status === 'approved' ? '#16A34A' : profile.kyc_status === 'pending' ? '#D97706' : '#DC2626';
 
@@ -624,7 +624,7 @@ export default function Profile() {
           <Text style={s.bannerEmail}>{profile.email}</Text>
         </View>
         <Pressable onPress={() => router.push('/settings')} style={s.gearBtn}>
-          <Text style={{ fontSize: 22 }}>âš™ï¸</Text>
+          <Text style={{ fontSize: 22 }}>�a"️</Text>
         </Pressable>
       </View>
 

@@ -12,15 +12,15 @@ export default function ChooseRole() {
       </View>
 
       <Text style={s.heading}>Create Your Account</Text>
-      <Text style={s.sub}>Start bidding on live auctions across South Africa â€” it's free to register.</Text>
+      <Text style={s.sub}>Start bidding on live auctions across South Africa � it's free to register.</Text>
 
       <View style={[s.card, s.activeCard]}>
-        <Text style={s.cardTitle}>ðŸ™‹ Bidder Account</Text>
+        <Text style={s.cardTitle}>�x"9 Bidder Account</Text>
         <Text style={s.cardSub}>Browse auctions, place bids, and pay securely for items you win.</Text>
       </View>
 
       <View style={[s.card, s.dimCard]}>
-        <Text style={s.cardTitle}>ðŸ”¨ Auctioneer Account</Text>
+        <Text style={s.cardTitle}>�x� Auctioneer Account</Text>
         <Text style={s.cardSub}>Auctioneer accounts are set up by the HT Auctions West Coast team. Contact us to get started.</Text>
       </View>
 
@@ -30,7 +30,7 @@ export default function ChooseRole() {
         <Text style={s.btnTxt}>Continue as Bidder</Text>
       </Pressable>
       <Pressable onPress={() => router.back()} style={{ alignItems: 'center', marginTop: 16, paddingBottom: 24 }}>
-        <Text style={{ color: Colors.gold, fontSize: 14 }}>â† Back</Text>
+        <Text style={{ color: Colors.gold, fontSize: 14 }}>� � Back</Text>
       </Pressable>
     </View>
   );

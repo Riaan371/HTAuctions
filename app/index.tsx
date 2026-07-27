@@ -41,11 +41,11 @@ export default function Welcome() {
         <Text style={s.tagline}>Online Auction</Text>
         <Text style={s.taglineSub}>South Africa's Live Auction Marketplace</Text>
         <View style={s.divider} />
-        <Text style={s.sub}>Bid live on vehicles, livestock, plant & equipment, collectibles and more â€” from anywhere in South Africa.</Text>
+        <Text style={s.sub}>Bid live on vehicles, livestock, plant & equipment, collectibles and more — from anywhere in South Africa.</Text>
 
         {!isInStandalone && (
           <Pressable onPress={handleInstall} style={s.installBtn}>
-            <Text style={s.installBtnTxt}>ðŸ“² Install App</Text>
+            <Text style={s.installBtnTxt}>📲 Install App</Text>
           </Pressable>
         )}
       </View>
@@ -54,9 +54,9 @@ export default function Welcome() {
         <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.7)', zIndex: 999, justifyContent: 'center', alignItems: 'center', padding: 24 }}>
           <View style={{ backgroundColor: '#fff', borderRadius: 20, padding: 24, width: '100%', maxWidth: 360 }}>
             <Text style={{ fontSize: 20, fontWeight: '800', color: Colors.navy, marginBottom: 8 }}>Install on Mobile</Text>
-            <Text style={{ color: '#374151', fontSize: 14, lineHeight: 22, marginBottom: 16 }}>
-              iPhone/iPad: Tap Share â†’ "Add to Home Screen"{'\n'}
-              Android (Chrome): Tap the 3-dot menu â†’ "Add to Home screen"
+            <Text style={{ color: ‘#374151’, fontSize: 14, lineHeight: 22, marginBottom: 16 }}>
+              iPhone/iPad: Tap Share → "Add to Home Screen"{‘\n’}
+              Android (Chrome): Tap the 3-dot menu → "Add to Home screen"
             </Text>
             <Pressable onPress={() => setShowIOSGuide(false)} style={{ backgroundColor: Colors.navy, borderRadius: 10, padding: 12, alignItems: 'center' }}>
               <Text style={{ color: '#fff', fontWeight: '700' }}>Got it</Text>
@@ -69,7 +69,7 @@ export default function Welcome() {
       <View style={s.btns}>
         <Link href="/(auth)/role" asChild>
           <Pressable style={s.btnPrimary}>
-            <Text style={s.btnPrimaryTxt}>Get Started â€” Register Free</Text>
+            <Text style={s.btnPrimaryTxt}>Get Started — Register Free</Text>
           </Pressable>
         </Link>
         <Link href="/(auth)/login" asChild>
@@ -79,7 +79,7 @@ export default function Welcome() {
         </Link>
         <Link href="/(tabs)" asChild>
           <Pressable style={{ alignItems: 'center', marginTop: 16, paddingBottom: 8 }}>
-            <Text style={s.guestTxt}>Continue as Guest â†’</Text>
+            <Text style={s.guestTxt}>Continue as Guest →</Text>
           </Pressable>
         </Link>
       </View>
@@ -101,7 +101,7 @@ const s = StyleSheet.create({
   btns: { paddingBottom: 48, gap: 12 },
   btnPrimary: { backgroundColor: Colors.gold, borderRadius: 14, paddingVertical: 17, alignItems: 'center' },
   btnPrimaryTxt: { color: Colors.navy, fontWeight: '800', fontSize: 16 },
-  btnSecondary: { borderRadius: 14, paddingVertical: 16, alignItems: 'center', borderWidth: 1.5, borderColor: 'rgba(196,154,34,0.5)' },
+  btnSecondary: { borderRadius: 14, paddingVertical: 16, alignItems: 'center', borderWidth: 1.5, borderColor: 'rgba(224,123,57,0.5)' },
   btnSecondaryTxt: { color: '#fff', fontWeight: '700', fontSize: 15 },
   guestTxt: { color: 'rgba(255,255,255,0.4)', fontSize: 13 },
 });

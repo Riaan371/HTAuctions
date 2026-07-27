@@ -43,12 +43,12 @@ serve(async () => {
       return `
         <tr>
           <td style="padding:8px;border-bottom:1px solid #eee">${lot.title}</td>
-          <td style="padding:8px;border-bottom:1px solid #eee">${lot.category ?? 'â€”'}</td>
+          <td style="padding:8px;border-bottom:1px solid #eee">${lot.category ?? '�'}</td>
           <td style="padding:8px;border-bottom:1px solid #eee">R${(lot.starting_bid ?? 0).toLocaleString('en-ZA')}</td>
           <td style="padding:8px;border-bottom:1px solid #eee;font-weight:bold;color:${sold ? '#16A34A' : '#6B7280'}">
             ${sold ? `R${hammer.toLocaleString('en-ZA')}` : 'No bids'}
           </td>
-          <td style="padding:8px;border-bottom:1px solid #eee">${sold ? 'âœ… SOLD' : 'âŒ Unsold'}</td>
+          <td style="padding:8px;border-bottom:1px solid #eee">${sold ? '�S& SOLD' : '�R Unsold'}</td>
         </tr>`;
     }).join('');
 

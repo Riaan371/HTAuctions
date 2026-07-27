@@ -6,7 +6,7 @@ const ONESIGNAL_API_KEY = Deno.env.get('ONESIGNAL_REST_API_KEY') ?? '';
 serve(async (req) => {
   try {
     const payload = await req.json();
-    const table = payload.table; // 'auctions' or 'live_sessions' â€” two separate webhooks call this function
+    const table = payload.table; // 'auctions' or 'live_sessions' � two separate webhooks call this function
     const record = payload.record ?? payload;
     const oldRecord = payload.old_record ?? null;
 
@@ -23,11 +23,11 @@ serve(async (req) => {
     let shouldSend = true;
 
     if (table === 'auctions') {
-      // Only timed auctions are announced from this table â€” live auctions are
+      // Only timed auctions are announced from this table � live auctions are
       // announced via the live_sessions row created alongside them, below,
       // to avoid sending a duplicate "scheduled" notification for both rows.
       if (record.type === 'timed' && record.status === 'active') {
-        title = 'â± New Timed Auction';
+        title = '⏱ New Timed Auction';
         message = `"${record.title}" is now open for bidding. Place your bids before the deadline!`;
         url = `https://htauctions.pages.dev/auction/${record.id}`;
       } else {
@@ -35,12 +35,12 @@ serve(async (req) => {
       }
     } else if (table === 'live_sessions') {
       if (record.status === 'scheduled') {
-        title = 'ðŸ“… Auction Scheduled';
+        title = '�x& Auction Scheduled';
         message = `"${record.title}" has been scheduled. Mark your calendar!`;
         url = `https://htauctions.pages.dev/live/${record.auction_id}`;
       } else if (record.status === 'live') {
-        title = 'ðŸ”´ Auction Going LIVE Now!';
-        message = `"${record.title}" is starting â€” join the live bidding now!`;
+        title = '�x� Auction Going LIVE Now!';
+        message = `"${record.title}" is starting � join the live bidding now!`;
         url = `https://htauctions.pages.dev/live/${record.auction_id}`;
       } else {
         shouldSend = false;

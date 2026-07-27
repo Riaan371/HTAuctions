@@ -22,7 +22,7 @@ export default function Login() {
     if (err) {
       setLoading(false);
       setError(err.message.toLowerCase().includes('confirm')
-        ? 'Please confirm your email first â€” check your inbox.'
+        ? 'Please confirm your email first � check your inbox.'
         : err.message);
       return;
     }
@@ -76,9 +76,9 @@ export default function Login() {
         <Text style={s.label}>Password</Text>
         <View style={s.passwordRow}>
           <TextInput style={[s.input, { flex: 1, marginBottom: 0 }]} value={password} onChangeText={setPassword}
-            placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢" placeholderTextColor="#9ca3af" secureTextEntry={!showPassword} autoCapitalize="none" />
+            placeholder="⬢⬢⬢⬢⬢⬢⬢⬢" placeholderTextColor="#9ca3af" secureTextEntry={!showPassword} autoCapitalize="none" />
           <Pressable onPress={() => setShowPassword(!showPassword)} style={s.eyeBtn}>
-            <Text style={s.eyeTxt}>{showPassword ? 'ðŸ™ˆ' : 'ðŸ‘'}</Text>
+            <Text style={s.eyeTxt}>{showPassword ? '�x"�' : '�x�'}</Text>
           </Pressable>
         </View>
 
