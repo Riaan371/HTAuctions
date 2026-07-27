@@ -1,4 +1,4 @@
-﻿import { View, Text, TextInput, Pressable, ActivityIndicator, StyleSheet, ScrollView, Image } from 'react-native';
+import { View, Text, TextInput, Pressable, ActivityIndicator, StyleSheet, ScrollView, Image } from 'react-native';
 import { router, Link } from 'expo-router';
 import { useState } from 'react';
 import { supabase } from '../../lib/supabase';

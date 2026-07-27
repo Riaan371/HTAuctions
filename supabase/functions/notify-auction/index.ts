@@ -1,4 +1,4 @@
-﻿import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
+import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 
 const ONESIGNAL_APP_ID = 'REPLACE_WITH_HTA_ONESIGNAL_APP_ID';
 const ONESIGNAL_API_KEY = Deno.env.get('ONESIGNAL_REST_API_KEY') ?? '';

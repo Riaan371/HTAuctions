@@ -1,4 +1,4 @@
-﻿import { View, Text, Pressable, Switch, ScrollView, StyleSheet, Alert, TextInput, Platform, ActivityIndicator, Image } from 'react-native';
+import { View, Text, Pressable, Switch, ScrollView, StyleSheet, Alert, TextInput, Platform, ActivityIndicator, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';

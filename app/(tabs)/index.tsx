@@ -1,4 +1,4 @@
-﻿import { View, Text, Image, Pressable, RefreshControl, ScrollView, StyleSheet, Dimensions, FlatList } from 'react-native';
+import { View, Text, Image, Pressable, RefreshControl, ScrollView, StyleSheet, Dimensions, FlatList } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';

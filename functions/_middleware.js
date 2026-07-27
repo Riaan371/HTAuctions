@@ -1,4 +1,4 @@
-﻿export async function onRequest(context) {
+export async function onRequest(context) {
   const response = await context.next();
   const contentType = response.headers.get('content-type') || '';
 

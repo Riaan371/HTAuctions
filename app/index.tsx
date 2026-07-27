@@ -1,4 +1,4 @@
-﻿import { Redirect, Link } from 'expo-router';
+import { Redirect, Link } from 'expo-router';
 import { View, Text, Pressable, StyleSheet, Image, ImageBackground } from 'react-native';
 import { useEffect, useState } from 'react';
 import { useAuthStore } from '../lib/auth-store';

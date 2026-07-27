@@ -1,4 +1,4 @@
-﻿import { View, Text, Pressable, StyleSheet, Image } from 'react-native';
+import { View, Text, Pressable, StyleSheet, Image } from 'react-native';
 import { router } from 'expo-router';
 import { Colors } from '../../lib/theme';
 

@@ -1,4 +1,4 @@
-﻿const APP_ID = 'REPLACE_WITH_HTA_ONESIGNAL_APP_ID';
+const APP_ID = 'REPLACE_WITH_HTA_ONESIGNAL_APP_ID';
 
 export function initOneSignal() {
   if (typeof window === 'undefined') return;
