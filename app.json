@@ -1,0 +1,52 @@
+{
+  "expo": {
+    "name": "HT Auctions West Coast",
+    "slug": "ht-auctions",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "co.za.htauctions.app"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#0D1B2A",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false,
+      "package": "co.za.htauctions.app"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro",
+      "output": "single",
+      "name": "HT Auctions West Coast",
+      "shortName": "HT Auctions",
+      "description": "West Coast's live & timed auction marketplace. Bid on vehicles, livestock, property, equipment and more.",
+      "themeColor": "#0D1B2A",
+      "backgroundColor": "#0D1B2A",
+      "display": "standalone",
+      "orientation": "any",
+      "scope": "/",
+      "startUrl": "/",
+      "lang": "en-ZA",
+      "dir": "ltr",
+      "preferRelatedApplications": false
+    },
+    "plugins": [
+      "expo-router",
+      "expo-status-bar",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "HT Auctions needs photo access to upload lot images."
+        }
+      ]
+    ],
+    "scheme": "ht-auctions"
+  }
+}

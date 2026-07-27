@@ -1,0 +1,45 @@
+{
+  "name": "HT Auctions West Coast",
+  "gcm_sender_id": "482941778795",
+  "short_name": "HT Auctions",
+  "description": "HT Auctions West Coast — Live Auction Marketplace",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "theme_color": "#0D1B2A",
+  "background_color": "#0D1B2A",
+  "lang": "en-ZA",
+  "icons": [
+    {
+      "src": "/icon-192-v5.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-192-v5.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/icon-512-v5.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512-v5.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/icon-1024-v5.png",
+      "sizes": "1024x1024",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}
