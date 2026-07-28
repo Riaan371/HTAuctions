@@ -12,25 +12,34 @@ export default function ChooseRole() {
       </View>
 
       <Text style={s.heading}>Create Your Account</Text>
-      <Text style={s.sub}>Start bidding on live auctions across South Africa � it's free to register.</Text>
+      <Text style={s.sub}>Start bidding on live auctions across South Africa - it's free to register.</Text>
 
-      <View style={[s.card, s.activeCard]}>
-        <Text style={s.cardTitle}>�x"9 Bidder Account</Text>
-        <Text style={s.cardSub}>Browse auctions, place bids, and pay securely for items you win.</Text>
-      </View>
+      <Pressable
+        style={[s.card, s.activeCard]}
+        onPress={() => router.push({ pathname: '/(auth)/register', params: { role: 'bidder' } })}
+      >
+        <Text style={s.cardIcon}>🪙</Text>
+        <View style={{ flex: 1 }}>
+          <Text style={s.cardTitle}>Bidder Account</Text>
+          <Text style={s.cardSub}>Browse auctions, place bids, and pay securely for items you win.</Text>
+        </View>
+      </Pressable>
 
-      <View style={[s.card, s.dimCard]}>
-        <Text style={s.cardTitle}>�x� Auctioneer Account</Text>
-        <Text style={s.cardSub}>Auctioneer accounts are set up by the HT Auctions West Coast team. Contact us to get started.</Text>
-      </View>
+      <Pressable
+        style={[s.card, s.aucCard]}
+        onPress={() => router.push({ pathname: '/(auth)/register', params: { role: 'auctioneer' } })}
+      >
+        <Text style={s.cardIcon}>🔨</Text>
+        <View style={{ flex: 1 }}>
+          <Text style={s.cardTitle}>Auctioneer Account</Text>
+          <Text style={s.cardSub}>Create and manage auctions, add lots, and run live bidding sessions.</Text>
+        </View>
+      </Pressable>
 
       <View style={{ flex: 1 }} />
 
-      <Pressable onPress={() => router.push({ pathname: '/(auth)/register', params: { role: 'bidder' } })} style={s.btn}>
-        <Text style={s.btnTxt}>Continue as Bidder</Text>
-      </Pressable>
       <Pressable onPress={() => router.back()} style={{ alignItems: 'center', marginTop: 16, paddingBottom: 24 }}>
-        <Text style={{ color: Colors.gold, fontSize: 14 }}>� � Back</Text>
+        <Text style={{ color: Colors.gold, fontSize: 14 }}>Back</Text>
       </Pressable>
     </View>
   );
@@ -44,11 +53,10 @@ const s = StyleSheet.create({
   brandOnline: { color: Colors.gold, fontSize: 11, fontWeight: '700', letterSpacing: 0.6, marginTop: 2 },
   heading: { fontSize: 22, fontWeight: '800', color: '#fff', marginBottom: 6 },
   sub: { fontSize: 14, color: 'rgba(255,255,255,0.5)', marginBottom: 24, lineHeight: 21 },
-  card: { borderWidth: 1.5, borderRadius: 16, padding: 18, marginBottom: 12 },
-  activeCard: { borderColor: Colors.gold, backgroundColor: 'rgba(196,154,34,0.08)' },
-  dimCard: { borderColor: 'rgba(255,255,255,0.12)', opacity: 0.5 },
+  card: { borderWidth: 1.5, borderRadius: 16, padding: 18, marginBottom: 12, flexDirection: 'row', alignItems: 'center', gap: 14 },
+  activeCard: { borderColor: Colors.gold, backgroundColor: 'rgba(224,123,57,0.10)' },
+  aucCard: { borderColor: 'rgba(255,255,255,0.2)', backgroundColor: 'rgba(255,255,255,0.04)' },
+  cardIcon: { fontSize: 28 },
   cardTitle: { fontSize: 16, fontWeight: '700', color: '#fff', marginBottom: 4 },
   cardSub: { fontSize: 13, color: 'rgba(255,255,255,0.55)', lineHeight: 19 },
-  btn: { backgroundColor: Colors.gold, borderRadius: 14, paddingVertical: 16, alignItems: 'center' },
-  btnTxt: { color: Colors.navy, fontWeight: '800', fontSize: 16 },
 });
