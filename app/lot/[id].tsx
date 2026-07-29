@@ -219,25 +219,27 @@ export default function LotDetail() {
         {/* Image carousel */}
         {lot.photos && lot.photos.length > 0 ? (
           <View>
-            <Pressable onPress={() => { setLightboxIndex(photoIndex); setLightbox(true); }}>
-              <Image source={{ uri: lot.photos[photoIndex] }} style={[s.heroImg, { width: screenWidth }]} resizeMode="cover" />
+            <Pressable onPress={() => { setLightboxIndex(photoIndex); setLightbox(true); }} style={[s.heroImg, { width: screenWidth, backgroundColor: '#0D1B2E' }]}>
+              <Image source={{ uri: lot.photos[photoIndex] }} style={{ width: '100%', height: '100%' }} resizeMode="contain" />
               <View style={s.zoomHint}><Text style={s.zoomHintTxt}>🔍 Tap to enlarge</Text></View>
+              {lot.photos.length > 1 && (
+                <>
+                  <Pressable onPress={() => setPhotoIndex((i) => (i - 1 + lot.photos.length) % lot.photos.length)} style={s.overlayArrowLeft}>
+                    <Text style={s.arrowTxt}>‹</Text>
+                  </Pressable>
+                  <Pressable onPress={() => setPhotoIndex((i) => (i + 1) % lot.photos.length)} style={s.overlayArrowRight}>
+                    <Text style={s.arrowTxt}>›</Text>
+                  </Pressable>
+                </>
+              )}
             </Pressable>
             {lot.photos.length > 1 && (
-              <View style={s.carouselNav}>
-                <Pressable onPress={() => setPhotoIndex((i) => (i - 1 + lot.photos.length) % lot.photos.length)} style={s.arrowBtn}>
-                  <Text style={s.arrowTxt}>‹</Text>
-                </Pressable>
-                <View style={s.dotRow}>
-                  {lot.photos.map((_: string, i: number) => (
-                    <Pressable key={i} onPress={() => setPhotoIndex(i)}>
-                      <View style={[s.dot, i === photoIndex && s.dotActive]} />
-                    </Pressable>
-                  ))}
-                </View>
-                <Pressable onPress={() => setPhotoIndex((i) => (i + 1) % lot.photos.length)} style={s.arrowBtn}>
-                  <Text style={s.arrowTxt}>›</Text>
-                </Pressable>
+              <View style={s.dotRow}>
+                {lot.photos.map((_: string, i: number) => (
+                  <Pressable key={i} onPress={() => setPhotoIndex(i)}>
+                    <View style={[s.dot, i === photoIndex && s.dotActive]} />
+                  </Pressable>
+                ))}
               </View>
             )}
             <Text style={s.photoCount}>{photoIndex + 1} / {lot.photos.length}</Text>
@@ -475,8 +477,8 @@ const s = StyleSheet.create({
   heroImg: { width: '100%', height: 300 },
   zoomHint: { position: 'absolute', bottom: 10, right: 10, backgroundColor: 'rgba(0,0,0,0.45)', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4 },
   zoomHintTxt: { color: '#fff', fontSize: 11 },
-  carouselNav: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 12, paddingVertical: 6 },
-  arrowBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: Colors.navy, alignItems: 'center', justifyContent: 'center' },
+  overlayArrowLeft: { position: 'absolute', left: 10, top: '50%', marginTop: -18, width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(0,0,0,0.45)', alignItems: 'center', justifyContent: 'center' },
+  overlayArrowRight: { position: 'absolute', right: 10, top: '50%', marginTop: -18, width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(0,0,0,0.45)', alignItems: 'center', justifyContent: 'center' },
   arrowTxt: { color: '#fff', fontSize: 22, fontWeight: '700', lineHeight: 26 },
   dotRow: { flexDirection: 'row', justifyContent: 'center', gap: 6, paddingVertical: 4 },
   dot: { width: 7, height: 7, borderRadius: 4, backgroundColor: '#d1d5db' },
