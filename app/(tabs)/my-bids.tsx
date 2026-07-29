@@ -21,7 +21,7 @@ export default function MyBids() {
     enabled: !!session,
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('bids').select('*, lots(id, title, current_bid, photos)').eq('bidder_id', session!.user.id).order('created_at', { ascending: false });
+        .from('bids').select('*, lots(id, title, current_bid, photos, closed, winner_id)').eq('bidder_id', session!.user.id).order('created_at', { ascending: false });
       if (error) throw error;
       return data;
     },
@@ -41,6 +41,19 @@ export default function MyBids() {
     );
   }
 
+  const filteredBids = (bids ?? []).filter((item: any) => {
+    const lot = item.lots;
+    const isClosed = !!lot?.closed;
+    const isTopBid = item.amount >= (lot?.current_bid ?? 0);
+    switch (tab) {
+      case 'Active': return !isClosed;
+      case 'Winning': return !isClosed && isTopBid;
+      case 'Outbid': return !isClosed && !isTopBid;
+      case 'Won': return isClosed && lot?.winner_id === session!.user.id;
+      default: return true;
+    }
+  });
+
   return (
     <SafeAreaView style={[s.root, { backgroundColor: bg }]}>
       <View style={s.header}>
@@ -55,7 +68,7 @@ export default function MyBids() {
       </View>
 
       <FlatList
-        data={bids ?? []}
+        data={filteredBids}
         keyExtractor={(item: any) => item.id}
         contentContainerStyle={{ padding: 16, paddingBottom: 32 }}
         ListEmptyComponent={
