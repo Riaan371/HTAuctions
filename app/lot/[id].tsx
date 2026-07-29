@@ -199,7 +199,22 @@ export default function LotDetail() {
 
   return (
     <SafeAreaView style={[s.root, { backgroundColor: bg }]}>
-      <Stack.Screen options={{ headerShown: true, headerTitle: '', headerBackTitle: 'Back' }} />
+      <Stack.Screen options={{
+        headerShown: true,
+        headerTitle: '',
+        headerStyle: { backgroundColor: Colors.navy },
+        headerTintColor: '#fff',
+        headerLeft: () => (
+          <Pressable onPress={() => router.back()} style={{ paddingHorizontal: 12, paddingVertical: 6 }}>
+            <Text style={{ color: '#fff', fontSize: 22, fontWeight: '300' }}>‹</Text>
+          </Pressable>
+        ),
+        headerRight: () => (
+          <Pressable onPress={() => router.push('/(tabs)')} style={{ paddingHorizontal: 12, paddingVertical: 6 }}>
+            <Text style={{ color: Colors.gold, fontSize: 14, fontWeight: '700' }}>Home</Text>
+          </Pressable>
+        ),
+      }} />
       <ScrollView contentContainerStyle={{ paddingBottom: 160 }}>
         {/* Image carousel */}
         {lot.photos && lot.photos.length > 0 ? (
