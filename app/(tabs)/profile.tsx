@@ -516,6 +516,60 @@ function AuctioneerPanel({ userId, ink, muted, card, border }: { userId: string;
   );
 }
 
+function ChangePasswordEditor({ ink, muted, card, border }: { ink: string; muted: string; card: string; border: string }) {
+  const [editing, setEditing] = useState(false);
+  const [password, setPassword] = useState('');
+  const [confirm, setConfirm] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+
+  const save = async () => {
+    setError('');
+    if (password.length < 6) { setError('Password must be at least 6 characters'); return; }
+    if (password !== confirm) { setError('Passwords do not match'); return; }
+    setSaving(true);
+    const { error: updateError } = await supabase.auth.updateUser({ password });
+    setSaving(false);
+    if (updateError) { setError(updateError.message); return; }
+    setPassword('');
+    setConfirm('');
+    setEditing(false);
+    Alert.alert('Password updated', 'Your password has been changed.');
+  };
+
+  return (
+    <View style={[{ borderWidth: 1, borderRadius: 14, padding: 14, marginBottom: 12 }, { borderColor: border, backgroundColor: card }]}>
+      <Text style={{ color: ink, fontWeight: '700', fontSize: 14, marginBottom: 4 }}>Password</Text>
+      {editing ? (
+        <View>
+          <Text style={{ color: muted, fontSize: 12, marginBottom: 10 }}>Enter a new password</Text>
+          <TextInput value={password} onChangeText={setPassword} placeholder="New password" placeholderTextColor={muted} secureTextEntry
+            style={{ borderWidth: 1, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8, borderColor: border, color: ink, fontSize: 14, marginBottom: 8 }} />
+          <TextInput value={confirm} onChangeText={setConfirm} placeholder="Confirm new password" placeholderTextColor={muted} secureTextEntry
+            style={{ borderWidth: 1, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8, borderColor: border, color: ink, fontSize: 14, marginBottom: 8 }} />
+          {error !== '' && <Text style={{ color: '#DC2626', fontSize: 12, marginBottom: 8 }}>{error}</Text>}
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            <Pressable onPress={save} disabled={saving} style={{ backgroundColor: Colors.gold, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 9 }}>
+              {saving ? <ActivityIndicator color={Colors.navy} size="small" /> : <Text style={{ color: Colors.navy, fontWeight: '700' }}>Save</Text>}
+            </Pressable>
+            <Pressable onPress={() => { setEditing(false); setPassword(''); setConfirm(''); setError(''); }} style={{ paddingVertical: 9 }}>
+              <Text style={{ color: muted, fontSize: 13 }}>Cancel</Text>
+            </Pressable>
+          </View>
+        </View>
+      ) : (
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+          <Text style={{ color: muted, fontSize: 13 }}>••••••••</Text>
+          <Pressable onPress={() => setEditing(true)}
+            style={{ borderWidth: 1, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 6, borderColor: Colors.gold }}>
+            <Text style={{ color: Colors.gold, fontSize: 13, fontWeight: '600' }}>Change</Text>
+          </Pressable>
+        </View>
+      )}
+    </View>
+  );
+}
+
 function ScreenNameEditor({ userId, currentName, ink, muted, card, border }: { userId: string; currentName: string | null; ink: string; muted: string; card: string; border: string }) {
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState(currentName ?? '');
@@ -623,9 +677,11 @@ export default function Profile() {
           <Text style={s.bannerName}>{profile.full_name}</Text>
           <Text style={s.bannerEmail}>{profile.email}</Text>
         </View>
-        <Pressable onPress={() => router.push('/settings')} style={s.gearBtn}>
-          <Text style={{ fontSize: 22 }}>a"️</Text>
-        </Pressable>
+        {profile.role !== 'bidder' && (
+          <Pressable onPress={() => router.push('/settings')} style={s.gearBtn}>
+            <Text style={{ fontSize: 22 }}>a"️</Text>
+          </Pressable>
+        )}
       </View>
 
       <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
@@ -646,13 +702,18 @@ export default function Profile() {
           <ScreenNameEditor userId={session.user.id} currentName={(profile as any).screen_name ?? null} ink={ink} muted={muted} card={card} border={border} />
         )}
 
+        {/* Change password — available to everyone */}
+        <ChangePasswordEditor ink={ink} muted={muted} card={card} border={border} />
+
         {/* Auctioneer actions */}
         {profile.role === 'auctioneer' && (
           <AuctioneerPanel userId={session.user.id} ink={ink} muted={muted} card={card} border={border} />
         )}
 
-        {/* Dark mode */}
-        <View style={{ marginBottom: 12 }}>{ThemeToggle}</View>
+        {/* Dark mode — hidden for bidders, screen is restricted to name/password/logout */}
+        {profile.role !== 'bidder' && (
+          <View style={{ marginBottom: 12 }}>{ThemeToggle}</View>
+        )}
 
         {/* Sign out */}
         <Pressable onPress={signOut} style={[s.btn, { borderWidth: 1.5, borderColor: '#DC2626', backgroundColor: 'transparent' }]}>
