@@ -587,7 +587,7 @@ function ScreenNameEditor({ userId, currentName, ink, muted, card, border }: { u
 
   return (
     <View style={[{ borderWidth: 1, borderRadius: 14, padding: 14, marginBottom: 12 }, { borderColor: border, backgroundColor: card }]}>
-      <Text style={{ color: ink, fontWeight: '700', fontSize: 14, marginBottom: 4 }}>} Screen Name</Text>
+      <Text style={{ color: ink, fontWeight: '700', fontSize: 14, marginBottom: 4 }}>Screen Name</Text>
       <Text style={{ color: muted, fontSize: 12, marginBottom: 10 }}>This name is shown when you place bids</Text>
       {editing ? (
         <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
@@ -705,8 +705,8 @@ export default function Profile() {
         {/* Change password — available to everyone */}
         <ChangePasswordEditor ink={ink} muted={muted} card={card} border={border} />
 
-        {/* Auctioneer actions */}
-        {profile.role === 'auctioneer' && (
+        {/* Auctioneer actions — also available to super_admin */}
+        {(profile.role === 'auctioneer' || profile.role === 'super_admin') && (
           <AuctioneerPanel userId={session.user.id} ink={ink} muted={muted} card={card} border={border} />
         )}
 
