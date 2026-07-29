@@ -80,12 +80,12 @@ export default function LotDetail() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('bids')
-        .select('id, amount, placed_at, bidder_id, users(full_name, screen_name)')
+        .select('id, amount, created_at, bidder_id, users(full_name, screen_name)')
         .eq('lot_id', id)
         .order('amount', { ascending: false })
         .limit(20);
       if (error) throw error;
-      return data as { id: string; amount: number; placed_at: string; bidder_id: string; users: { full_name: string; screen_name: string | null } | null }[];
+      return data as { id: string; amount: number; created_at: string; bidder_id: string; users: { full_name: string; screen_name: string | null } | null }[];
     },
     refetchInterval: 4000,
   });
@@ -328,7 +328,7 @@ export default function LotDetail() {
                     <Text style={[{ color: ink, fontWeight: i === 0 ? '700' : '400', fontSize: 14 }]}>
                       {isMe ? 'You' : name} {i === 0 ? '👑' : ''}
                     </Text>
-                    <Text style={[s.bidHistoryTime, { color: muted }]}>{new Date(b.placed_at).toLocaleString('en-ZA')}</Text>
+                    <Text style={[s.bidHistoryTime, { color: muted }]}>{new Date(b.created_at).toLocaleString('en-ZA')}</Text>
                   </View>
                   <Text style={[s.bidHistoryAmt, { color: i === 0 ? Colors.primary : ink, fontWeight: i === 0 ? '800' : '600' }]}>
                     {formatZAR(b.amount)}

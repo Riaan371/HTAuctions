@@ -21,7 +21,7 @@ export default function MyBids() {
     enabled: !!session,
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('bids').select('*, lots(id, title, current_bid, photos)').eq('bidder_id', session!.user.id).order('placed_at', { ascending: false });
+        .from('bids').select('*, lots(id, title, current_bid, photos)').eq('bidder_id', session!.user.id).order('created_at', { ascending: false });
       if (error) throw error;
       return data;
     },
