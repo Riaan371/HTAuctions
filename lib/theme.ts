@@ -1,14 +1,14 @@
 import { useThemeStore } from './theme-store';
 
 export const Colors = {
-  primary: '#E07B39',    // HT Auctions Orange
-  navy: '#0D1B2E',       // Dark Navy (headers, dark sections)
-  navyMid: '#1B2B4B',   // Mid navy
-  gold: '#E07B39',       // Orange (replaces gold)
-  goldLight: '#F4A261',  // Light orange
-  success: '#16A34A',
-  danger: '#DC2626',
-  ink: '#0F172A',
+  primary: '#D9A441',    // HT Auctions Amber — the one accent
+  navy: '#17293D',       // Slate Navy (headers, dark sections)
+  navyMid: '#23384F',    // Mid navy
+  gold: '#D9A441',       // alias to primary, kept for existing references
+  goldLight: '#E8C077',  // Light amber
+  success: '#16A34A',    // semantic: winning / approved
+  danger: '#C1432E',     // semantic: live / urgent / error
+  ink: '#17293D',
 };
 
 export function useAppTheme() {
@@ -17,12 +17,12 @@ export function useAppTheme() {
   return {
     dark,
     theme,
-    bg: dark ? '#080E18' : '#F8F7F4',
-    card: dark ? '#0D1B2E' : '#ffffff',
-    border: dark ? '#1B2B4B' : '#E5E7EB',
-    ink: dark ? '#F1F5F9' : '#0F172A',
-    muted: dark ? 'rgba(241,245,249,0.45)' : 'rgba(15,23,42,0.5)',
-    subtle: dark ? 'rgba(255,255,255,0.06)' : 'rgba(15,23,42,0.04)',
-    input: dark ? '#1B2B4B' : '#F1F5F9',
+    bg: dark ? '#0F1B29' : '#F5F6F4',
+    card: dark ? '#17293D' : '#ffffff',
+    border: dark ? '#243A52' : '#E1E4DF',
+    ink: dark ? '#F1F5F9' : '#17293D',
+    muted: dark ? 'rgba(241,245,249,0.45)' : 'rgba(23,41,61,0.5)',
+    subtle: dark ? 'rgba(255,255,255,0.06)' : 'rgba(23,41,61,0.04)',
+    input: dark ? '#23384F' : '#F1F5F9',
   };
 }

@@ -6,7 +6,7 @@ import { useState } from 'react';
 import { useAuthStore } from '../../lib/auth-store';
 import { useThemeStore } from '../../lib/theme-store';
 import { supabase } from '../../lib/supabase';
-import { Colors } from '../../lib/theme';
+import { Colors, useAppTheme } from '../../lib/theme';
 
 function storagePathFromUrl(url: string): string | null {
   const marker = '/lot-photos/';
@@ -617,15 +617,8 @@ export default function Profile() {
   const session = useAuthStore((s) => s.session);
   const profile = useAuthStore((s) => s.profile);
   const signOut = useAuthStore((s) => s.signOut);
-  const theme = useThemeStore((s) => s.theme);
   const toggleTheme = useThemeStore((s) => s.toggle);
-  const dark = theme === 'dark';
-
-  const bg = dark ? '#080E18' : '#F8F7F4';
-  const card = dark ? '#0D1B2E' : '#ffffff';
-  const border = dark ? '#1B2B4B' : '#E5E7EB';
-  const ink = dark ? '#F1F5F9' : '#0F172A';
-  const muted = dark ? 'rgba(241,245,249,0.45)' : 'rgba(15,23,42,0.5)';
+  const { dark, bg, card, border, ink, muted } = useAppTheme();
 
   const ThemeToggle = (
     <View style={[s.card, { backgroundColor: card, borderColor: border }]}>

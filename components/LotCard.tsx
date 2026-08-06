@@ -76,6 +76,6 @@ const s = StyleSheet.create({
   title: { fontSize: 14, fontWeight: '600', lineHeight: 20, flex: 1 },
   bottomRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: 6 },
   bidLabel: { fontSize: 10, marginBottom: 1 },
-  bidAmt: { fontSize: 17, fontWeight: '800', color: Colors.primary },
+  bidAmt: { fontSize: 17, fontWeight: '800', color: Colors.primary, fontVariant: ['tabular-nums'] },
   heartBtn: { padding: 4 },
 });
