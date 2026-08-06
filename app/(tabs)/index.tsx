@@ -63,28 +63,28 @@ const FALLBACK = 'https://images.unsplash.com/photo-1450101499163-c8848c66ca85?w
 
 function PhotoCollage({ photos }: { photos: string[] }) {
   const p = photos.length;
-  if (p === 0) return <Image source={{ uri: FALLBACK }} style={s.eventImg} resizeMode="cover" />;
-  if (p === 1) return <Image source={{ uri: photos[0] }} style={s.eventImg} resizeMode="cover" />;
+  if (p === 0) return <Image source={{ uri: FALLBACK }} style={s.eventImg} resizeMode="contain" />;
+  if (p === 1) return <Image source={{ uri: photos[0] }} style={s.eventImg} resizeMode="contain" />;
   if (p === 2) return (
     <View style={s.collageRow}>
-      <Image source={{ uri: photos[0] }} style={s.collageHalf} resizeMode="cover" />
+      <Image source={{ uri: photos[0] }} style={s.collageHalf} resizeMode="contain" />
       <View style={s.collageDivider} />
-      <Image source={{ uri: photos[1] }} style={s.collageHalf} resizeMode="cover" />
+      <Image source={{ uri: photos[1] }} style={s.collageHalf} resizeMode="contain" />
     </View>
   );
   // 3 or 4 photos: big left + stacked right
   return (
     <View style={s.collageRow}>
-      <Image source={{ uri: photos[0] }} style={s.collageBig} resizeMode="cover" />
+      <Image source={{ uri: photos[0] }} style={s.collageBig} resizeMode="contain" />
       <View style={s.collageDivider} />
       <View style={{ flex: 1 }}>
-        <Image source={{ uri: photos[1] }} style={s.collageSmall} resizeMode="cover" />
+        <Image source={{ uri: photos[1] }} style={s.collageSmall} resizeMode="contain" />
         <View style={s.collageDividerH} />
-        <Image source={{ uri: photos[2] ?? photos[1] }} style={s.collageSmall} resizeMode="cover" />
+        <Image source={{ uri: photos[2] ?? photos[1] }} style={s.collageSmall} resizeMode="contain" />
         {p >= 4 && (
           <>
             <View style={s.collageDividerH} />
-            <Image source={{ uri: photos[3] }} style={s.collageSmall} resizeMode="cover" />
+            <Image source={{ uri: photos[3] }} style={s.collageSmall} resizeMode="contain" />
           </>
         )}
       </View>
@@ -423,15 +423,15 @@ const s = StyleSheet.create({
   eventCard: { width: '100%', borderRadius: 16, overflow: 'hidden', backgroundColor: Colors.navy },
   catChip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 99, borderWidth: 1 },
   catChipTxt: { fontSize: 13, fontWeight: '700' },
-  eventImg: { width: '100%', height: 180 },
-  eventImgOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(13,27,46,0.45)', top: 0, height: 180 },
+  eventImg: { width: '100%', height: 180, backgroundColor: Colors.navyMid },
+  eventImgOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(23,41,61,0.3)', top: 0, height: 180 },
   // Collage layouts
   collageRow: { flexDirection: 'row', height: 180 },
   collageDivider: { width: 2, backgroundColor: Colors.navy },
   collageDividerH: { height: 2, backgroundColor: Colors.navy },
-  collageHalf: { flex: 1, height: 180 },
-  collageBig: { flex: 1.4, height: 180 },
-  collageSmall: { flex: 1 },
+  collageHalf: { flex: 1, height: 180, backgroundColor: Colors.navyMid },
+  collageBig: { flex: 1.4, height: 180, backgroundColor: Colors.navyMid },
+  collageSmall: { flex: 1, backgroundColor: Colors.navyMid },
   liveBadge: { position: 'absolute', top: 12, left: 12, flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#DC2626', borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4 },
   liveDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#fff' },
   liveBadgeTxt: { color: '#fff', fontWeight: '800', fontSize: 11, letterSpacing: 0.5 },
