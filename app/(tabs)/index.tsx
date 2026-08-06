@@ -63,8 +63,8 @@ const FALLBACK = 'https://images.unsplash.com/photo-1450101499163-c8848c66ca85?w
 
 function PhotoCollage({ photos }: { photos: string[] }) {
   const p = photos.length;
-  if (p === 0) return <Image source={{ uri: FALLBACK }} style={s.eventImg} resizeMode="contain" />;
-  if (p === 1) return <Image source={{ uri: photos[0] }} style={s.eventImg} resizeMode="contain" />;
+  if (p === 0) return <Image source={{ uri: FALLBACK }} style={s.eventImgSingle} resizeMode="contain" />;
+  if (p === 1) return <Image source={{ uri: photos[0] }} style={s.eventImgSingle} resizeMode="contain" />;
   if (p === 2) return (
     <View style={s.collageRow}>
       <Image source={{ uri: photos[0] }} style={s.collageHalf} resizeMode="contain" />
@@ -77,7 +77,7 @@ function PhotoCollage({ photos }: { photos: string[] }) {
     <View style={s.collageRow}>
       <Image source={{ uri: photos[0] }} style={s.collageBig} resizeMode="contain" />
       <View style={s.collageDivider} />
-      <View style={{ flex: 1 }}>
+      <View style={s.collageSmallWrap}>
         <Image source={{ uri: photos[1] }} style={s.collageSmall} resizeMode="contain" />
         <View style={s.collageDividerH} />
         <Image source={{ uri: photos[2] ?? photos[1] }} style={s.collageSmall} resizeMode="contain" />
@@ -118,7 +118,6 @@ function AuctionEventCard({ session, photos }: { session: any; photos?: string[]
       : router.push(`/live/${session.auction_id}`)
     }>
       <PhotoCollage photos={photos ?? []} />
-      <View style={s.eventImgOverlay} />
       {isLive && (
         <View style={s.liveBadge}>
           <View style={s.liveDot} />
@@ -423,14 +422,14 @@ const s = StyleSheet.create({
   eventCard: { width: '100%', borderRadius: 16, overflow: 'hidden', backgroundColor: Colors.navy },
   catChip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 99, borderWidth: 1 },
   catChipTxt: { fontSize: 13, fontWeight: '700' },
-  eventImg: { width: '100%', height: 180, backgroundColor: Colors.navyMid },
-  eventImgOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(23,41,61,0.3)', top: 0, height: 180 },
+  eventImgSingle: { alignSelf: 'flex-start', width: 150, height: 120, backgroundColor: Colors.navyMid },
   // Collage layouts
-  collageRow: { flexDirection: 'row', height: 180 },
+  collageRow: { alignSelf: 'flex-start', flexDirection: 'row', height: 120 },
   collageDivider: { width: 2, backgroundColor: Colors.navy },
   collageDividerH: { height: 2, backgroundColor: Colors.navy },
-  collageHalf: { flex: 1, height: 180, backgroundColor: Colors.navyMid },
-  collageBig: { flex: 1.4, height: 180, backgroundColor: Colors.navyMid },
+  collageHalf: { width: 120, height: 120, backgroundColor: Colors.navyMid },
+  collageBig: { width: 150, height: 120, backgroundColor: Colors.navyMid },
+  collageSmallWrap: { width: 70, height: 120 },
   collageSmall: { flex: 1, backgroundColor: Colors.navyMid },
   liveBadge: { position: 'absolute', top: 12, left: 12, flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#DC2626', borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4 },
   liveDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#fff' },
