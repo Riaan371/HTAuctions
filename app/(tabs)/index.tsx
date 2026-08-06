@@ -10,7 +10,7 @@ import { requestNotificationPermission, getNotificationPermission } from '../../
 import { shouldShowInstallPrompt, markInstallPromptShown } from '../../lib/install-prompt';
 
 const { width: SW } = Dimensions.get('window');
-const CARD_W = SW > 600 ? 320 : SW * 0.78;
+const CATEGORIES = ['Vehicles', 'Plant & Equipment', 'Livestock', 'Property', 'Industrial', 'Household', 'Electronics', 'Collectibles', 'Art & Jewellery'];
 
 
 async function fetchAuctionEvents() {
@@ -242,6 +242,9 @@ export default function Home() {
   const liveEvents = (events ?? []).filter((e: any) => e.status === 'live');
   const upcomingEvents = (events ?? []).filter((e: any) => e.status === 'scheduled' || e.status === 'timed');
 
+  // Visual only — not wired to filter the events list.
+  const [category, setCategory] = useState<string | null>(null);
+
   return (
     <SafeAreaView style={[s.root, { backgroundColor: bg }]}>
       <ScrollView
@@ -347,16 +350,31 @@ export default function Home() {
               <Text style={[s.sectionTitle, { color: ink }]}>Active Auctions</Text>
               <View style={s.goldLine} />
             </View>
+
             <FlatList
-              data={upcomingEvents}
+              data={['All', ...CATEGORIES]}
               horizontal
               showsHorizontalScrollIndicator={false}
-              keyExtractor={(item: any) => item.auction_id}
-              contentContainerStyle={{ paddingHorizontal: 16, gap: 14 }}
-              renderItem={({ item }: any) => (
-                <AuctionEventCard session={item} photos={covers?.[item.auction_id]} />
-              )}
+              keyExtractor={(item) => item}
+              contentContainerStyle={{ paddingHorizontal: 16, gap: 8, marginBottom: 14 }}
+              renderItem={({ item }) => {
+                const active = item === 'All' ? category === null : category === item;
+                return (
+                  <Pressable
+                    onPress={() => setCategory(item === 'All' ? null : item)}
+                    style={[s.catChip, { backgroundColor: active ? Colors.gold : 'transparent', borderColor: active ? Colors.gold : border }]}
+                  >
+                    <Text style={[s.catChipTxt, { color: active ? Colors.navy : ink }]}>{item}</Text>
+                  </Pressable>
+                );
+              }}
             />
+
+            <View style={{ paddingHorizontal: 16, gap: 14 }}>
+              {upcomingEvents.map((e: any) => (
+                <AuctionEventCard key={e.auction_id} session={e} photos={covers?.[e.auction_id]} />
+              ))}
+            </View>
           </View>
         )}
 
@@ -402,7 +420,9 @@ const s = StyleSheet.create({
   goldLine: { width: 36, height: 3, backgroundColor: Colors.gold, borderRadius: 2 },
 
   // Auction event card
-  eventCard: { width: CARD_W, borderRadius: 16, overflow: 'hidden', backgroundColor: Colors.navy },
+  eventCard: { width: '100%', borderRadius: 16, overflow: 'hidden', backgroundColor: Colors.navy },
+  catChip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 99, borderWidth: 1 },
+  catChipTxt: { fontSize: 13, fontWeight: '700' },
   eventImg: { width: '100%', height: 180 },
   eventImgOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(13,27,46,0.45)', top: 0, height: 180 },
   // Collage layouts
