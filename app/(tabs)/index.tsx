@@ -117,7 +117,9 @@ function AuctionEventCard({ session, photos }: { session: any; photos?: string[]
       ? router.push(`/auction/${session.auction_id}`)
       : router.push(`/live/${session.auction_id}`)
     }>
-      <PhotoCollage photos={photos ?? []} />
+      <View style={s.lotImgWrap}>
+        <PhotoCollage photos={photos ?? []} />
+      </View>
       {isLive && (
         <View style={s.liveBadge}>
           <View style={s.liveDot} />
@@ -422,15 +424,16 @@ const s = StyleSheet.create({
   eventCard: { width: '100%', borderRadius: 16, overflow: 'hidden', backgroundColor: Colors.navy },
   catChip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 99, borderWidth: 1 },
   catChipTxt: { fontSize: 13, fontWeight: '700' },
-  eventImgSingle: { alignSelf: 'flex-start', width: 150, height: 120, backgroundColor: Colors.navyMid },
+  lotImgWrap: { alignSelf: 'flex-start', margin: 12, borderRadius: 10, overflow: 'hidden' },
+  eventImgSingle: { width: 150, height: 120, backgroundColor: '#E9EBE7' },
   // Collage layouts
   collageRow: { alignSelf: 'flex-start', flexDirection: 'row', height: 120 },
   collageDivider: { width: 2, backgroundColor: Colors.navy },
   collageDividerH: { height: 2, backgroundColor: Colors.navy },
-  collageHalf: { width: 120, height: 120, backgroundColor: Colors.navyMid },
-  collageBig: { width: 150, height: 120, backgroundColor: Colors.navyMid },
+  collageHalf: { width: 120, height: 120, backgroundColor: '#E9EBE7' },
+  collageBig: { width: 150, height: 120, backgroundColor: '#E9EBE7' },
   collageSmallWrap: { width: 70, height: 120 },
-  collageSmall: { flex: 1, backgroundColor: Colors.navyMid },
+  collageSmall: { flex: 1, backgroundColor: '#E9EBE7' },
   liveBadge: { position: 'absolute', top: 12, left: 12, flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#DC2626', borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4 },
   liveDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#fff' },
   liveBadgeTxt: { color: '#fff', fontWeight: '800', fontSize: 11, letterSpacing: 0.5 },
