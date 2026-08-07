@@ -1,4 +1,4 @@
-const APP_ID = 'REPLACE_WITH_HTA_ONESIGNAL_APP_ID';
+const APP_ID = 'b381ec59-c895-4341-aa33-9c5cd9f4d7bc';
 
 export function initOneSignal() {
   if (typeof window === 'undefined') return;
