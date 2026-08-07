@@ -180,6 +180,7 @@ export default function Home() {
 
   const handleEnableNotifications = async () => {
     setShowNotifAsk(false);
+    if (typeof window !== 'undefined') window.localStorage.setItem('wcp-notif-dismissed', '1');
     await requestNotificationPermission();
   };
 
