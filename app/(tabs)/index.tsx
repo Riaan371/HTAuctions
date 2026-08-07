@@ -1,4 +1,4 @@
-import { View, Text, Image, Pressable, RefreshControl, ScrollView, StyleSheet, Dimensions, FlatList } from 'react-native';
+import { View, Text, Image, Pressable, RefreshControl, ScrollView, StyleSheet, Dimensions, FlatList, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
@@ -103,7 +103,29 @@ function timeUntil(isoDate: string): string {
   return `${mins}m remaining`;
 }
 
+function EventBadge({ isLive, isTimed, inline }: { isLive: boolean; isTimed: boolean; inline?: boolean }) {
+  const wrapStyle = inline ? s.badgeInline : s.liveBadge;
+  if (isLive) return (
+    <View style={wrapStyle}>
+      <View style={s.liveDot} />
+      <Text style={s.liveBadgeTxt}>LIVE NOW</Text>
+    </View>
+  );
+  if (isTimed) return (
+    <View style={[wrapStyle, { backgroundColor: Colors.navy, borderWidth: 1, borderColor: Colors.gold }]}>
+      <Text style={[s.liveBadgeTxt, { color: Colors.gold }]}>⏱ TIMED</Text>
+    </View>
+  );
+  return (
+    <View style={[wrapStyle, { backgroundColor: '#fff', borderWidth: 1.5, borderColor: '#DC2626' }]}>
+      <Text style={[s.liveBadgeTxt, { color: '#DC2626' }]}>LIVE EVENT</Text>
+    </View>
+  );
+}
+
 function AuctionEventCard({ session, photos }: { session: any; photos?: string[] }) {
+  const { width } = useWindowDimensions();
+  const isDesktop = width >= 768;
   const isLive = session.status === 'live';
   const isTimed = session.status === 'timed';
   const dt = session.scheduled_at ? new Date(session.scheduled_at) : null;
@@ -111,31 +133,41 @@ function AuctionEventCard({ session, photos }: { session: any; photos?: string[]
   const timeStr = dt ? dt.toLocaleTimeString('en-ZA', { hour: '2-digit', minute: '2-digit' }) : '';
   const lotCount = session.lot_ids?.length ?? 0;
   const title = session.title ?? session.auctions?.title ?? 'Auction Event';
+  const onPress = () => isTimed
+    ? router.push(`/auction/${session.auction_id}`)
+    : router.push(`/live/${session.auction_id}`);
+
+  if (isDesktop) {
+    return (
+      <Pressable style={s.eventCardRow} onPress={onPress}>
+        <View style={s.rowImgWrap}>
+          <PhotoCollage photos={photos ?? []} />
+        </View>
+        <View style={s.rowContent}>
+          <EventBadge isLive={isLive} isTimed={isTimed} inline />
+          <Text style={s.rowTitle} numberOfLines={1}>{title}</Text>
+          <Text style={s.rowMeta}>
+            {isTimed && dt ? `${timeUntil(dt.toISOString())} · Closes ${dateStr}` : ''}
+            {!isTimed && !isLive && dt ? dateStr + (timeStr ? ` at ${timeStr}` : '') : ''}
+            {lotCount > 0 ? ` · ${lotCount} lot${lotCount !== 1 ? 's' : ''}` : ''}
+          </Text>
+          <View style={s.rowBottom}>
+            <Text style={s.rowHint}>Tap to view lots</Text>
+            <View style={s.rowBtn}>
+              <Text style={s.rowBtnTxt}>{isTimed ? 'Bid Now →' : 'View Auction →'}</Text>
+            </View>
+          </View>
+        </View>
+      </Pressable>
+    );
+  }
 
   return (
-    <Pressable style={s.eventCard} onPress={() => isTimed
-      ? router.push(`/auction/${session.auction_id}`)
-      : router.push(`/live/${session.auction_id}`)
-    }>
+    <Pressable style={s.eventCard} onPress={onPress}>
       <View style={s.lotImgWrap}>
         <PhotoCollage photos={photos ?? []} />
       </View>
-      {isLive && (
-        <View style={s.liveBadge}>
-          <View style={s.liveDot} />
-          <Text style={s.liveBadgeTxt}>LIVE NOW</Text>
-        </View>
-      )}
-      {isTimed && (
-        <View style={[s.liveBadge, { backgroundColor: Colors.navy, borderWidth: 1, borderColor: Colors.gold }]}>
-          <Text style={[s.liveBadgeTxt, { color: Colors.gold }]}>⏱ TIMED</Text>
-        </View>
-      )}
-      {!isTimed && !isLive && (
-        <View style={[s.liveBadge, { backgroundColor: '#fff', borderWidth: 1.5, borderColor: '#DC2626' }]}>
-          <Text style={[s.liveBadgeTxt, { color: '#DC2626' }]}>LIVE EVENT</Text>
-        </View>
-      )}
+      <EventBadge isLive={isLive} isTimed={isTimed} />
       <View style={s.eventContent}>
         {isTimed && dt && (
           <Text style={s.eventDate}>{timeUntil(dt.toISOString()).toUpperCase()}</Text>
@@ -436,8 +468,20 @@ const s = StyleSheet.create({
   collageSmallWrap: { width: 70, height: 120 },
   collageSmall: { flex: 1, backgroundColor: '#E9EBE7' },
   liveBadge: { position: 'absolute', top: 12, left: 12, flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#DC2626', borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4 },
+  badgeInline: { alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#DC2626', borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4, marginBottom: 8 },
   liveDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#fff' },
   liveBadgeTxt: { color: '#fff', fontWeight: '800', fontSize: 11, letterSpacing: 0.5 },
+
+  // Desktop wide row
+  eventCardRow: { flexDirection: 'row', borderRadius: 16, overflow: 'hidden', backgroundColor: Colors.navy },
+  rowImgWrap: { alignSelf: 'center', margin: 16, borderRadius: 10, overflow: 'hidden' },
+  rowContent: { flex: 1, paddingVertical: 18, paddingRight: 20, justifyContent: 'center' },
+  rowTitle: { color: '#fff', fontWeight: '800', fontSize: 19, marginBottom: 4 },
+  rowMeta: { color: 'rgba(255,255,255,0.55)', fontSize: 13, marginBottom: 14 },
+  rowBottom: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  rowHint: { color: 'rgba(255,255,255,0.45)', fontSize: 12 },
+  rowBtn: { backgroundColor: Colors.gold, borderRadius: 8, paddingVertical: 10, paddingHorizontal: 20 },
+  rowBtnTxt: { color: Colors.navy, fontWeight: '800', fontSize: 13.5 },
   eventContent: { padding: 14 },
   eventDate: { color: Colors.gold, fontWeight: '700', fontSize: 11, letterSpacing: 0.8, marginBottom: 6 },
   eventTitle: { color: '#fff', fontWeight: '800', fontSize: 16, lineHeight: 22, marginBottom: 8 },
