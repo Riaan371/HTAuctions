@@ -303,7 +303,7 @@ export default function LiveRoom() {
       await client.join(appId || APP_ID, auctionId, token, uid);
 
       if (isHost) {
-        const mic = await AgoraRTC.createMicrophoneAudioTrack(micId ? { microphoneId: micId } : undefined);
+        const mic = await AgoraRTC.createMicrophoneAudioTrack({ ...(micId ? { microphoneId: micId } : {}), encoderConfig: 'music_standard' });
         micTrackRef.current = mic;
         const tracks = [mic];
         if (!camTrackRef.current) {
