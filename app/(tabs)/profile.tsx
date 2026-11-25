@@ -365,7 +365,7 @@ function ExportReport({ ink, muted, card, border }: { ink: string; muted: string
       rows.push(['', '', '', 'TOTAL', total]);
 
       const csv = rows.map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
-      const filename = `WCP_Sales_${fromDate.replace(/\//g, '-')}_to_${toDate.replace(/\//g, '-')}.csv`;
+      const filename = `HTA_Sales_${fromDate.replace(/\//g, '-')}_to_${toDate.replace(/\//g, '-')}.csv`;
 
       if (Platform.OS === 'web') {
         const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });

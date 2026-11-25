@@ -65,7 +65,7 @@ export default function Register() {
       <Pressable disabled={loading} onPress={submit} style={[s.btn, { opacity: loading ? 0.8 : 1 }]}>
         {loading ? <ActivityIndicator color="#fff" /> : <Text style={s.btnTxt}>Create account</Text>}
       </Pressable>
-      <Text style={s.legal}>By continuing you agree to BidWave's Terms & Conditions and Privacy Policy.</Text>
+      <Text style={s.legal}>By continuing you agree to HT Auctions West Coast's Terms & Conditions and Privacy Policy.</Text>
     </ScrollView>
   );
 }

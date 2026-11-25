@@ -46,3 +46,6 @@ CUsers*
 /ios
 /android
 .env
+
+# Supabase CLI link cache (must never carry another project's ref)
+supabase/.temp/
