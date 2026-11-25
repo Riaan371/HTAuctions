@@ -1,23 +1,38 @@
-// Supabase Edge Function — generates Agora RTC tokens server-side.
-// Deploy: supabase functions deploy agora-token --project-ref mokpadcikpebwqsdsvcy
-// Set secret: supabase secrets set AGORA_APP_CERTIFICATE=<cert> --project-ref mokpadcikpebwqsdsvcy
+// Supabase Edge Function: issues Agora RTC tokens for the HT Auctions live room.
+// Deploy: npx supabase functions deploy agora-token --project-ref oeujibxugghjysjnqply
+// Secrets (Supabase > Edge Functions > Secrets): AGORA_APP_ID, AGORA_APP_CERTIFICATE
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { RtcTokenBuilder, RtcRole } from 'https://esm.sh/agora-token@2.0.4';
 
-const APP_ID = Deno.env.get('AGORA_APP_ID') ?? '84e49bb27e1f4d6ebc297960e2b014d1';
+const APP_ID = Deno.env.get('AGORA_APP_ID') ?? '';
 const APP_CERTIFICATE = Deno.env.get('AGORA_APP_CERTIFICATE') ?? '';
+
+// The auctioneer always joins with this uid; viewers only ever play this uid's
+// stream, so nobody else can pose as the broadcast. Viewers get a random uid
+// bound into their token.
+const HOST_UID = 1;
+// agora-token takes seconds from now (not an absolute timestamp). The client
+// renews before expiry, so this only needs to outlast a long auction day.
+const TOKEN_TTL_SECONDS = 6 * 60 * 60;
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+function viewerUid(): number {
+  const r = crypto.getRandomValues(new Uint32Array(1))[0];
+  return 1000 + (r % 2_000_000_000);
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
   try {
+    if (!APP_ID || !APP_CERTIFICATE) throw new Error('Live video is not configured on the server yet.');
+
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) throw new Error('Unauthorized');
 
@@ -29,19 +44,30 @@ serve(async (req) => {
     const { data: { user }, error } = await supabase.auth.getUser();
     if (error || !user) throw new Error('Unauthorized');
 
-    const { channel, uid, role } = await req.json();
+    const { channel, role } = await req.json();
     if (!channel) throw new Error('channel is required');
 
-    const numUid = uid ?? 0;
-    const expireTs = Math.floor(Date.now() / 1000) + 3600;
-    const agoraRole = role === 'publisher' ? RtcRole.PUBLISHER : RtcRole.SUBSCRIBER;
+    const wantsHost = role === 'publisher';
+    if (wantsHost) {
+      const { data: profile } = await supabase.from('users').select('role').eq('id', user.id).maybeSingle();
+      if (profile?.role !== 'auctioneer' && profile?.role !== 'super_admin') {
+        throw new Error('Only the auctioneer can broadcast.');
+      }
+    }
 
-    const token = APP_CERTIFICATE
-      ? RtcTokenBuilder.buildTokenWithUid(APP_ID, APP_CERTIFICATE, channel, numUid, agoraRole, expireTs, expireTs)
-      : null;
+    const uid = wantsHost ? HOST_UID : viewerUid();
+    const token = RtcTokenBuilder.buildTokenWithUid(
+      APP_ID,
+      APP_CERTIFICATE,
+      channel,
+      uid,
+      wantsHost ? RtcRole.PUBLISHER : RtcRole.SUBSCRIBER,
+      TOKEN_TTL_SECONDS,
+      TOKEN_TTL_SECONDS
+    );
 
     return new Response(
-      JSON.stringify({ token, appId: APP_ID, channel, uid: numUid }),
+      JSON.stringify({ token, appId: APP_ID, channel, uid }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (e: any) {

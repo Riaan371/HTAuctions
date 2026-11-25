@@ -5,7 +5,10 @@ import { supabase } from './supabase';
 
 const APP_ID = process.env.EXPO_PUBLIC_AGORA_APP_ID ?? '';
 
-export async function getAgoraToken(channel: string, role: 'publisher' | 'subscriber'): Promise<{ token: string; appId: string }> {
+// The auctioneer always joins as this uid; viewers only play this uid's stream.
+export const HOST_UID = 1;
+
+export async function getAgoraToken(channel: string, role: 'publisher' | 'subscriber'): Promise<{ token: string; appId: string; uid: number }> {
   const { data: { session } } = await supabase.auth.getSession();
   if (!session) throw new Error('Must be logged in');
 
@@ -23,7 +26,8 @@ export async function getAgoraToken(channel: string, role: 'publisher' | 'subscr
   );
   const json = await resp.json();
   if (json.error) throw new Error(json.error);
-  return { token: json.token, appId: json.appId ?? APP_ID };
+  if (!json.token) throw new Error('Live video is not available right now.');
+  return { token: json.token, appId: json.appId ?? APP_ID, uid: json.uid };
 }
 
 export async function markSessionLive(auctionId: string, userId: string) {
