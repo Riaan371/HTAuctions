@@ -16,11 +16,14 @@ const CATEGORIES = ['Vehicles', 'Plant & Equipment', 'Livestock', 'Property', 'I
 
 async function fetchAuctionEvents() {
   // Live sessions (live + scheduled)
-  const { data: sessions } = await supabase
+  // (no join to auctions: the session row already carries the title, and the
+  // old join asked for a column that doesn't exist, which silently emptied the list)
+  const { data: sessions, error: sessionsError } = await supabase
     .from('live_sessions')
-    .select('auction_id, title, scheduled_at, status, lot_ids, auctions(title, end_at, auction_type)')
+    .select('auction_id, title, scheduled_at, status, lot_ids')
     .in('status', ['live', 'scheduled'])
     .order('scheduled_at');
+  if (sessionsError) throw new Error(sessionsError.message);
 
   // Timed auctions — all active ones (end_at may be null or future).
   // Skipped entirely while the app is live-auction-only.
@@ -140,7 +143,7 @@ function countdownText(target: number, now: number): string {
 
 // Live-auction-only home screen: one big card with the next live auction's
 // date and time, or a "join now" card while it is on air.
-function NextLiveCard({ events }: { events: any[] }) {
+function NextLiveCard({ events, loadError }: { events: any[]; loadError?: boolean }) {
   const { ink, muted } = useAppTheme();
   const [now, setNow] = useState(Date.now());
   useEffect(() => {
@@ -194,6 +197,16 @@ function NextLiveCard({ events }: { events: any[] }) {
             Turn on notifications and we'll alert you the moment we go live.
           </Text>
         </View>
+      </View>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <View style={s.emptyEvents}>
+        <Text style={{ fontSize: 48, marginBottom: 12 }}>⚠️</Text>
+        <Text style={[s.emptyTitle, { color: ink }]}>Couldn't load the auction schedule</Text>
+        <Text style={[s.emptyBody, { color: muted }]}>Check your connection and tap the refresh button at the top right.</Text>
       </View>
     );
   }
@@ -344,7 +357,7 @@ export default function Home() {
     await installPrompt.userChoice;
   };
 
-  const { data: events, isRefetching, refetch } = useQuery({
+  const { data: events, isRefetching, refetch, isError: eventsError } = useQuery({
     queryKey: ['auction-events'],
     queryFn: fetchAuctionEvents,
     refetchInterval: 15000,
@@ -446,7 +459,7 @@ export default function Home() {
         )}
 
         {/* —— LIVE-ONLY MODE: next live auction —— */}
-        {!TIMED_AUCTIONS_ENABLED && <NextLiveCard events={events ?? []} />}
+        {!TIMED_AUCTIONS_ENABLED && <NextLiveCard events={events ?? []} loadError={eventsError && !events} />}
 
         {/* —— LIVE NOW —— */}
         {TIMED_AUCTIONS_ENABLED && liveEvents.length > 0 && (
