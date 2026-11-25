@@ -1,6 +1,10 @@
 import { Tabs } from 'expo-router';
 import { Text } from 'react-native';
 import { Colors } from '../../lib/theme';
+import { TIMED_AUCTIONS_ENABLED } from '../../lib/features';
+
+// Live-only mode: hide the tabs that only make sense for timed auctions.
+const hide = TIMED_AUCTIONS_ENABLED ? {} : { href: null };
 
 function TabIcon({ icon, focused }: { icon: string; focused: boolean }) {
   return <Text style={{ fontSize: 20, opacity: focused ? 1 : 0.35 }}>{icon}</Text>;
@@ -18,9 +22,9 @@ export default function TabsLayout() {
       }}
     >
       <Tabs.Screen name="index"     options={{ title: 'Home',      tabBarIcon: ({ focused }) => <TabIcon icon="🏠" focused={focused} /> }} />
-      <Tabs.Screen name="search"    options={{ title: 'Search',    tabBarIcon: ({ focused }) => <TabIcon icon="🔍" focused={focused} /> }} />
-      <Tabs.Screen name="watchlist" options={{ title: 'Watchlist', tabBarIcon: ({ focused }) => <TabIcon icon="⭐" focused={focused} /> }} />
-      <Tabs.Screen name="my-bids"   options={{ title: 'My Bids',   tabBarIcon: ({ focused }) => <TabIcon icon="💰" focused={focused} /> }} />
+      <Tabs.Screen name="search"    options={{ title: 'Search',    ...hide, tabBarIcon: ({ focused }) => <TabIcon icon="🔍" focused={focused} /> }} />
+      <Tabs.Screen name="watchlist" options={{ title: 'Watchlist', ...hide, tabBarIcon: ({ focused }) => <TabIcon icon="⭐" focused={focused} /> }} />
+      <Tabs.Screen name="my-bids"   options={{ title: 'My Bids',   ...hide, tabBarIcon: ({ focused }) => <TabIcon icon="💰" focused={focused} /> }} />
       <Tabs.Screen name="profile"   options={{ title: 'Profile',   tabBarIcon: ({ focused }) => <TabIcon icon="👤" focused={focused} /> }} />
     </Tabs>
   );

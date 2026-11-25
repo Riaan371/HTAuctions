@@ -7,6 +7,7 @@ import { useAuthStore } from '../../lib/auth-store';
 import { useThemeStore } from '../../lib/theme-store';
 import { supabase } from '../../lib/supabase';
 import { Colors, useAppTheme } from '../../lib/theme';
+import { TIMED_AUCTIONS_ENABLED } from '../../lib/features';
 
 function storagePathFromUrl(url: string): string | null {
   const marker = '/lot-photos/';
@@ -466,7 +467,7 @@ function AuctioneerPanel({ userId, ink, muted, card, border }: { userId: string;
         <Text style={[s.btnText, { color: '#fff' }]}> Manage Lots</Text>
       </Pressable>
       <Pressable onPress={() => router.push('/schedule-live')} style={[s.btn, { backgroundColor: Colors.gold, marginBottom: 12 }]}>
-        <Text style={[s.btnText, { color: Colors.navy }]}> Schedule / Go Live</Text>
+        <Text style={[s.btnText, { color: Colors.navy }]}> {TIMED_AUCTIONS_ENABLED ? 'Schedule / Go Live' : 'Schedule Live Auction'}</Text>
       </Pressable>
 
       <ActiveLotsPanel userId={userId} ink={ink} muted={muted} card={card} border={border} />

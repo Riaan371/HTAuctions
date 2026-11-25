@@ -8,6 +8,7 @@ import { useAuthStore } from '../../lib/auth-store';
 import { useAppTheme, Colors } from '../../lib/theme';
 import { requestNotificationPermission, getNotificationPermission } from '../../lib/onesignal';
 import { shouldShowInstallPrompt, markInstallPromptShown } from '../../lib/install-prompt';
+import { TIMED_AUCTIONS_ENABLED } from '../../lib/features';
 
 const { width: SW } = Dimensions.get('window');
 const CATEGORIES = ['Vehicles', 'Plant & Equipment', 'Livestock', 'Property', 'Industrial', 'Household', 'Electronics', 'Collectibles', 'Art & Jewellery'];
@@ -21,13 +22,16 @@ async function fetchAuctionEvents() {
     .in('status', ['live', 'scheduled'])
     .order('scheduled_at');
 
-  // Timed auctions — all active ones (end_at may be null or future)
-  const { data: timed } = await supabase
-    .from('auctions')
-    .select('id, title, end_at, type, status')
-    .eq('type', 'timed')
-    .eq('status', 'active')
-    .order('end_at');
+  // Timed auctions — all active ones (end_at may be null or future).
+  // Skipped entirely while the app is live-auction-only.
+  const { data: timed } = TIMED_AUCTIONS_ENABLED
+    ? await supabase
+        .from('auctions')
+        .select('id, title, end_at, type, status')
+        .eq('type', 'timed')
+        .eq('status', 'active')
+        .order('end_at')
+    : { data: [] as any[] };
 
   const timedMapped = (timed ?? []).map((a: any) => ({
     auction_id: a.id,
@@ -119,6 +123,86 @@ function EventBadge({ isLive, isTimed, inline }: { isLive: boolean; isTimed: boo
   return (
     <View style={[wrapStyle, { backgroundColor: '#fff', borderWidth: 1.5, borderColor: '#DC2626' }]}>
       <Text style={[s.liveBadgeTxt, { color: '#DC2626' }]}>LIVE EVENT</Text>
+    </View>
+  );
+}
+
+function countdownText(target: number, now: number): string {
+  const diff = target - now;
+  if (diff <= 0) return 'Starting shortly';
+  const days = Math.floor(diff / 86400000);
+  const hrs = Math.floor((diff % 86400000) / 3600000);
+  const mins = Math.floor((diff % 3600000) / 60000);
+  if (days > 0) return `Starts in ${days} day${days !== 1 ? 's' : ''} ${hrs} h`;
+  if (hrs > 0) return `Starts in ${hrs} h ${mins} min`;
+  return `Starts in ${Math.max(mins, 1)} min`;
+}
+
+// Live-auction-only home screen: one big card with the next live auction's
+// date and time, or a "join now" card while it is on air.
+function NextLiveCard({ events }: { events: any[] }) {
+  const { ink, muted } = useAppTheme();
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 30000);
+    return () => clearInterval(t);
+  }, []);
+
+  const live = events.find((e) => e.status === 'live');
+  const upcoming = events
+    .filter((e) => e.status === 'scheduled' && e.scheduled_at)
+    .sort((a, b) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime())
+    // ignore stale sessions whose start time passed more than 3 hours ago
+    .find((e) => new Date(e.scheduled_at).getTime() >= now - 3 * 3600000);
+
+  if (live) {
+    return (
+      <View style={s.nlWrap}>
+        <Pressable onPress={() => router.push(`/live/${live.auction_id}`)} style={[s.nlCard, { borderColor: '#DC2626' }]}>
+          <View style={s.nlLivePill}>
+            <View style={s.liveDot} />
+            <Text style={s.liveBadgeTxt}>LIVE NOW</Text>
+          </View>
+          <Text style={s.nlTitle}>{live.title ?? live.auctions?.title ?? 'Live Auction'}</Text>
+          <Text style={s.nlBody}>The auction is on air. Watch the auctioneer and place your bids live.</Text>
+          <View style={s.nlBtn}>
+            <Text style={s.nlBtnTxt}>Watch & Bid Live →</Text>
+          </View>
+        </Pressable>
+      </View>
+    );
+  }
+
+  if (upcoming) {
+    const d = new Date(upcoming.scheduled_at);
+    const timeStr = d.toLocaleTimeString('en-ZA', { hour: '2-digit', minute: '2-digit', hour12: false });
+    const dateStr = d.toLocaleDateString('en-ZA', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+    const lotCount = upcoming.lot_ids?.length ?? 0;
+    return (
+      <View style={s.nlWrap}>
+        <View style={s.nlCard}>
+          <Text style={s.nlLabel}>NEXT LIVE AUCTION</Text>
+          <Text style={s.nlTime}>{timeStr}</Text>
+          <Text style={s.nlDate}>{dateStr}</Text>
+          <View style={s.nlCountdown}>
+            <Text style={s.nlCountdownTxt}>{countdownText(d.getTime(), now)}</Text>
+          </View>
+          <Text style={s.nlTitle}>{upcoming.title ?? upcoming.auctions?.title ?? 'Live Auction'}</Text>
+          {lotCount > 0 && <Text style={s.nlMeta}>{lotCount} lot{lotCount !== 1 ? 's' : ''} on the block</Text>}
+          <Text style={s.nlBody}>
+            Come back at this time to watch the auction live and bid from your phone or computer.
+            Turn on notifications and we'll alert you the moment we go live.
+          </Text>
+        </View>
+      </View>
+    );
+  }
+
+  return (
+    <View style={s.emptyEvents}>
+      <Text style={{ fontSize: 48, marginBottom: 12 }}>📅</Text>
+      <Text style={[s.emptyTitle, { color: ink }]}>No live auction scheduled yet</Text>
+      <Text style={[s.emptyBody, { color: muted }]}>The date and time of the next live auction will appear here. Check back soon.</Text>
     </View>
   );
 }
@@ -270,7 +354,7 @@ export default function Home() {
   const { data: covers } = useQuery({
     queryKey: ['lot-covers', auctionIds.join(',')],
     queryFn: () => fetchLotCovers(auctionIds),
-    enabled: auctionIds.length > 0,
+    enabled: TIMED_AUCTIONS_ENABLED && auctionIds.length > 0,
   }); // covers: Record<auctionId, string[]>
 
   const liveEvents = (events ?? []).filter((e: any) => e.status === 'live');
@@ -361,8 +445,11 @@ export default function Home() {
           </View>
         )}
 
+        {/* —— LIVE-ONLY MODE: next live auction —— */}
+        {!TIMED_AUCTIONS_ENABLED && <NextLiveCard events={events ?? []} />}
+
         {/* —— LIVE NOW —— */}
-        {liveEvents.length > 0 && (
+        {TIMED_AUCTIONS_ENABLED && liveEvents.length > 0 && (
           <View style={s.section}>
             {liveEvents.map((e: any) => (
               <Pressable key={e.auction_id} onPress={() => router.push(`/live/${e.auction_id}`)} style={s.liveBanner}>
@@ -378,7 +465,7 @@ export default function Home() {
         )}
 
         {/* —— UPCOMING AUCTIONS —— */}
-        {upcomingEvents.length > 0 && (
+        {TIMED_AUCTIONS_ENABLED && upcomingEvents.length > 0 && (
           <View style={{ marginBottom: 24 }}>
             <View style={s.sectionHeader}>
               <Text style={[s.sectionTitle, { color: ink }]}>Active Auctions</Text>
@@ -413,7 +500,7 @@ export default function Home() {
         )}
 
         {/* —— NO EVENTS PLACEHOLDER —— */}
-        {(!events || events.length === 0) && (
+        {TIMED_AUCTIONS_ENABLED && (!events || events.length === 0) && (
           <View style={s.emptyEvents}>
             <Text style={{ fontSize: 48, marginBottom: 12 }}>🏗</Text>
             <Text style={[s.emptyTitle, { color: ink }]}>No auctions scheduled yet</Text>
@@ -489,6 +576,21 @@ const s = StyleSheet.create({
   eventMetaTxt: { color: 'rgba(255,255,255,0.6)', fontSize: 12 },
   eventBtn: { backgroundColor: Colors.gold, borderRadius: 8, paddingVertical: 10, alignItems: 'center' },
   eventBtnTxt: { color: Colors.navy, fontWeight: '800', fontSize: 14 },
+
+  // Next live auction card (live-only mode)
+  nlWrap: { paddingHorizontal: 16, paddingTop: 20, paddingBottom: 8, alignItems: 'center' },
+  nlCard: { width: '100%', maxWidth: 560, backgroundColor: Colors.navy, borderRadius: 20, borderWidth: 1.5, borderColor: Colors.gold, padding: 28, alignItems: 'center' },
+  nlLabel: { color: Colors.gold, fontWeight: '800', fontSize: 12, letterSpacing: 1.4, marginBottom: 12 },
+  nlTime: { color: '#fff', fontWeight: '800', fontSize: 64, lineHeight: 70, letterSpacing: 1 },
+  nlDate: { color: '#fff', fontSize: 18, fontWeight: '600', marginTop: 4, textAlign: 'center' },
+  nlCountdown: { backgroundColor: 'rgba(217,164,65,0.16)', borderRadius: 99, paddingHorizontal: 14, paddingVertical: 6, marginTop: 16, marginBottom: 20 },
+  nlCountdownTxt: { color: Colors.gold, fontWeight: '700', fontSize: 13 },
+  nlTitle: { color: '#fff', fontWeight: '800', fontSize: 18, textAlign: 'center', marginBottom: 6 },
+  nlMeta: { color: 'rgba(255,255,255,0.6)', fontSize: 13, marginBottom: 12 },
+  nlBody: { color: 'rgba(255,255,255,0.7)', fontSize: 14, lineHeight: 21, textAlign: 'center', marginTop: 6 },
+  nlLivePill: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#DC2626', borderRadius: 20, paddingHorizontal: 12, paddingVertical: 5, marginBottom: 16 },
+  nlBtn: { backgroundColor: Colors.gold, borderRadius: 10, paddingVertical: 14, paddingHorizontal: 28, marginTop: 20 },
+  nlBtnTxt: { color: Colors.navy, fontWeight: '800', fontSize: 15 },
 
   // Empty state
   emptyEvents: { alignItems: 'center', paddingVertical: 48, paddingHorizontal: 32 },

@@ -7,6 +7,7 @@ import { supabase } from '../lib/supabase';
 import { useAuthStore } from '../lib/auth-store';
 import { useAppTheme, Colors } from '../lib/theme';
 import { formatZAR } from '../components/LotCard';
+import { TIMED_AUCTIONS_ENABLED } from '../lib/features';
 
 type AuctionType = 'timed' | 'live';
 
@@ -15,7 +16,7 @@ export default function ScheduleLive() {
   const { bg, card, border, ink, muted, input } = useAppTheme();
   const queryClient = useQueryClient();
 
-  const [auctionType, setAuctionType] = useState<AuctionType>('timed');
+  const [auctionType, setAuctionType] = useState<AuctionType>(TIMED_AUCTIONS_ENABLED ? 'timed' : 'live');
   const [title, setTitle] = useState('');
   const [date, setDate] = useState('');
   const [hour, setHour] = useState('');
@@ -112,7 +113,7 @@ export default function ScheduleLive() {
     <SafeAreaView style={[s.root, { backgroundColor: bg }]}>
       <Stack.Screen options={{
         headerShown: true,
-        title: 'Create Auction',
+        title: TIMED_AUCTIONS_ENABLED ? 'Create Auction' : 'Schedule Live Auction',
         headerStyle: { backgroundColor: Colors.navy },
         headerTintColor: '#fff',
         headerLeft: () => (
@@ -124,8 +125,8 @@ export default function ScheduleLive() {
 
       <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 120 }}>
 
-        {/* Auction Type Toggle */}
-        <View style={[s.card, { backgroundColor: card, borderColor: border, marginBottom: 16 }]}>
+        {/* Auction Type Toggle — hidden while the app is live-auction-only */}
+        {TIMED_AUCTIONS_ENABLED && <View style={[s.card, { backgroundColor: card, borderColor: border, marginBottom: 16 }]}>
           <Text style={[s.sectionTitle, { color: ink }]}>Auction Type</Text>
           <View style={s.typeRow}>
             <Pressable
@@ -149,7 +150,7 @@ export default function ScheduleLive() {
               </Text>
             </Pressable>
           </View>
-        </View>
+        </View>}
 
         {/* Auction Details */}
         <View style={[s.card, { backgroundColor: card, borderColor: border }]}>
@@ -161,13 +162,13 @@ export default function ScheduleLive() {
             placeholderTextColor="#9CA3AF" style={[inputStyle, s.mb]} />
 
           <Text style={[s.label, { color: muted }]}>
-            {auctionType === 'timed' ? 'Closing Date (DDMMYYYY) *' : 'Event Date (DDMMYYYY)'}
+            {auctionType === 'timed' ? 'Closing Date (DDMMYYYY) *' : 'Auction Date (DDMMYYYY)'}
           </Text>
-          <TextInput value={date} onChangeText={(v) => setDate(v.replace(/[^0-9]/g, '').slice(0, 8))} placeholder="30062026"
+          <TextInput value={date} onChangeText={(v) => setDate(v.replace(/[^0-9]/g, '').slice(0, 8))} placeholder={auctionType === 'timed' ? '30062026' : '15012027'}
             placeholderTextColor="#9CA3AF" keyboardType="numeric" maxLength={8} style={[inputStyle, s.mb]} />
 
           <Text style={[s.label, { color: muted }]}>
-            {auctionType === 'timed' ? 'Closing Time *' : 'Event Time'}
+            {auctionType === 'timed' ? 'Closing Time *' : 'Start Time (24-hour, e.g. 15 : 00)'}
           </Text>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
             <TextInput value={hour} onChangeText={(v) => setHour(v.replace(/[^0-9]/g, '').slice(0, 2))}
@@ -179,7 +180,9 @@ export default function ScheduleLive() {
               maxLength={2} style={[inputStyle, { flex: 1, textAlign: 'center' }]} />
           </View>
           <Text style={{ color: muted, fontSize: 12, marginTop: 6 }}>
-            {auctionType === 'timed' ? 'Bidding closes at this time.' : 'Leave blank to go live immediately.'}
+            {auctionType === 'timed'
+              ? 'Bidding closes at this time.'
+              : 'Bidders see this date and time on their home screen. Leave both blank only for a test — the auction then goes live immediately.'}
           </Text>
         </View>
 
