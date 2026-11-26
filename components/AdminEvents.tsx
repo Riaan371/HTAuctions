@@ -22,7 +22,7 @@ function StatusPill({ status }: { status: string }) {
   );
 }
 
-function EventCard({ ev, onDelete }: { ev: EventRow; onDelete: (ev: EventRow) => void }) {
+function EventCard({ ev, onDelete, onReopen, onStartOver }: { ev: EventRow; onDelete: (ev: EventRow) => void; onReopen: (ev: EventRow) => void; onStartOver: (ev: EventRow) => void }) {
   const lots = ev.lot_ids?.length ?? 0;
   const ended = ev.status === 'ended';
   return (
@@ -54,6 +54,16 @@ function EventCard({ ev, onDelete }: { ev: EventRow; onDelete: (ev: EventRow) =>
             <Text style={s.btnOutlineTxt}>Report so far</Text>
           </Pressable>
         )}
+        {ended && (
+          <>
+            <Pressable onPress={() => onReopen(ev)} style={[s.btn, s.btnOutline]}>
+              <Text style={s.btnOutlineTxt}>Reopen</Text>
+            </Pressable>
+            <Pressable onPress={() => onStartOver(ev)} style={[s.btn, s.btnOutline]}>
+              <Text style={s.btnOutlineTxt}>Start over</Text>
+            </Pressable>
+          </>
+        )}
         <Pressable onPress={() => onDelete(ev)} style={[s.btn, s.btnDanger]}>
           <Text style={s.btnDangerTxt}>Delete</Text>
         </Pressable>
@@ -79,6 +89,65 @@ export default function AdminEvents() {
 
   const upcoming = (events ?? []).filter((e) => e.status !== 'ended');
   const past = (events ?? []).filter((e) => e.status === 'ended').reverse();
+
+  function refreshAll() {
+    queryClient.invalidateQueries({ queryKey: ['admin-events'] });
+    queryClient.invalidateQueries({ queryKey: ['auction-events'] });
+    queryClient.invalidateQueries({ queryKey: ['event'] });
+    queryClient.invalidateQueries({ queryKey: ['live-all-lots'] });
+  }
+
+  // Reopen: back to Scheduled so it can be started again. Lots passed in at the end go back on the block;
+  // lots that sold (online or in the room) stay sold.
+  async function onReopen(ev: EventRow) {
+    const ok = await confirmAsync('Reopen this auction?', 'It goes back to Scheduled so you can start it again. Lots that were passed in at the end go back on the block. Lots that sold stay sold.', 'Reopen');
+    if (!ok) return;
+    try {
+      const ids = ev.lot_ids ?? [];
+      if (ids.length) {
+        const { error: e1 } = await supabase.from('lots').update({ closed: false, no_sale: false }).in('id', ids).is('winner_id', null).eq('no_sale', true);
+        if (e1) throw new Error(e1.message);
+      }
+      let start = 0;
+      if (ids.length) {
+        const { data: lots } = await supabase.from('lots').select('id, closed, winner_id').in('id', ids);
+        const open = ids.findIndex((id) => { const l = (lots ?? []).find((x: any) => x.id === id); return l && !l.closed && !l.winner_id; });
+        start = open >= 0 ? open : 0;
+      }
+      const { error: e2 } = await supabase.from('live_sessions').update({ status: 'scheduled', current_lot_index: start }).eq('auction_id', ev.auction_id);
+      if (e2) throw new Error(e2.message);
+      await supabase.from('auctions').update({ status: 'scheduled', closed_at: null }).eq('id', ev.auction_id);
+      refreshAll();
+    } catch (e: any) {
+      Alert.alert('Could not reopen', e.message);
+    }
+  }
+
+  // Start over: for test runs. Deletes every online bid and result and puts every lot back on the block.
+  async function onStartOver(ev: EventRow) {
+    const ok = await confirmAsync('Start over?', 'This deletes ALL online bids and results for this auction and puts every lot back on the block. The lots and their photos stay. This cannot be undone.', 'Start over');
+    if (!ok) return;
+    try {
+      const ids = ev.lot_ids ?? [];
+      if (ids.length) {
+        const { error: bErr } = await supabase.from('bids').delete().in('lot_id', ids);
+        if (bErr) throw new Error('Could not clear the bids: ' + bErr.message);
+        const { data: left } = await supabase.from('bids').select('id').in('lot_id', ids).limit(1);
+        if (left && left.length) throw new Error('The database did not allow the bids to be deleted. Ask me for the one-line permission fix.');
+        const { data: lots } = await supabase.from('lots').select('id, starting_bid').in('id', ids);
+        for (const l of lots ?? []) {
+          const { error: lErr } = await supabase.from('lots').update({ closed: false, no_sale: false, winner_id: null, current_bid: (l as any).starting_bid }).eq('id', (l as any).id);
+          if (lErr) throw new Error(lErr.message);
+        }
+      }
+      const { error: e2 } = await supabase.from('live_sessions').update({ status: 'scheduled', current_lot_index: 0 }).eq('auction_id', ev.auction_id);
+      if (e2) throw new Error(e2.message);
+      await supabase.from('auctions').update({ status: 'scheduled', closed_at: null }).eq('id', ev.auction_id);
+      refreshAll();
+    } catch (e: any) {
+      Alert.alert('Could not start over', e.message);
+    }
+  }
 
   async function onDelete(ev: EventRow) {
     const ok = await confirmAsync(
@@ -109,12 +178,12 @@ export default function AdminEvents() {
           <Text style={s.meta}>Create one to set the date and time, then add the lots that will be sold.</Text>
         </View>
       )}
-      {upcoming.map((ev) => <EventCard key={ev.id} ev={ev} onDelete={onDelete} />)}
+      {upcoming.map((ev) => <EventCard key={ev.id} ev={ev} onDelete={onDelete} onReopen={onReopen} onStartOver={onStartOver} />)}
 
       {past.length > 0 && (
         <>
           <Text style={[s.section, { marginTop: 22 }]}>Past auctions</Text>
-          {past.map((ev) => <EventCard key={ev.id} ev={ev} onDelete={onDelete} />)}
+          {past.map((ev) => <EventCard key={ev.id} ev={ev} onDelete={onDelete} onReopen={onReopen} onStartOver={onStartOver} />)}
         </>
       )}
     </View>
