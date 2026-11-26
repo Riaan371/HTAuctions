@@ -626,7 +626,7 @@ export default function Profile() {
   // —— GUEST VIEW ——
   if (!session || !profile) {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: Colors.navy }}>
+      <SafeAreaView style={{ flex: 1, backgroundColor: C.bg }}>
         <View style={s.guestRoot}>
           <Image source={require('../../assets/logo.png')} style={s.guestLogo} resizeMode="contain" />
           <Text style={s.guestBrand}>HT Auctions West Coast</Text>
@@ -634,13 +634,13 @@ export default function Profile() {
           <Text style={s.guestTagline}>South Africa's Live Auction Marketplace</Text>
 
           <View style={s.guestCard}>
-            <Text style={s.guestHeading}>Join the Auction</Text>
-            <Text style={s.guestSub}>Create an account to place bids, save lots, and track your wins.</Text>
+            <Text style={s.guestHeading}>Join the auction</Text>
+            <Text style={s.guestSub}>Create an account to bid in our live auctions. You can watch without one.</Text>
             <Pressable onPress={() => router.push('/(auth)/role')} style={s.guestBtn}>
-              <Text style={s.guestBtnTxt}>Create an Account</Text>
+              <Text style={s.guestBtnTxt}>Create an account</Text>
             </Pressable>
             <Pressable onPress={() => router.push('/(auth)/login')} style={{ alignItems: 'center', marginTop: 14 }}>
-              <Text style={{ color: Colors.gold, fontSize: 14, fontWeight: '600' }}>I already have an account</Text>
+              <Text style={{ color: C.ink, fontSize: 16, fontWeight: '800' }}>I already have an account</Text>
             </Pressable>
           </View>
         </View>
@@ -668,11 +668,11 @@ export default function Profile() {
         <View style={[s.card, { backgroundColor: card, borderColor: border, marginBottom: 12, flexDirection: 'row', gap: 8 }]}>
           <View style={[s.pill, { backgroundColor: `${roleColor}18` }]}>
             <View style={[s.pillDot, { backgroundColor: roleColor }]} />
-            <Text style={[s.pillText, { color: roleColor }]}>{profile.role}</Text>
+            <Text style={[s.pillText, { color: roleColor }]}>{profile.role === 'bidder' ? 'Bidder' : profile.role === 'auctioneer' ? 'Auctioneer' : 'Administrator'}</Text>
           </View>
           <View style={[s.pill, { backgroundColor: `${kycColor}18` }]}>
             <View style={[s.pillDot, { backgroundColor: kycColor }]} />
-            <Text style={[s.pillText, { color: kycColor }]}>KYC {profile.kyc_status}</Text>
+            <Text style={[s.pillText, { color: kycColor }]}>{profile.kyc_status === 'approved' ? 'Approved to bid' : profile.kyc_status === 'pending' ? 'Waiting for approval to bid' : 'Not approved'}</Text>
           </View>
         </View>
 
@@ -706,14 +706,14 @@ const s = StyleSheet.create({
   // Guest
   guestRoot: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 28 },
   guestLogo: { width: 100, height: 100, marginBottom: 14 },
-  guestBrand: { color: '#fff', fontSize: 22, fontWeight: '800', letterSpacing: 0.3, marginBottom: 4 },
-  guestOnline: { color: Colors.gold, fontSize: 12, fontWeight: '700', letterSpacing: 0.6, marginBottom: 4 },
-  guestTagline: { color: 'rgba(255,255,255,0.45)', fontSize: 12, marginBottom: 32 },
-  guestCard: { width: '100%', backgroundColor: '#fff', borderRadius: 20, padding: 24 },
-  guestHeading: { fontSize: 20, fontWeight: '800', color: Colors.navy, marginBottom: 6 },
-  guestSub: { fontSize: 13, color: 'rgba(15,23,42,0.55)', marginBottom: 20, lineHeight: 19 },
-  guestBtn: { backgroundColor: Colors.gold, borderRadius: 12, paddingVertical: 15, alignItems: 'center' },
-  guestBtnTxt: { color: Colors.navy, fontWeight: '800', fontSize: 16 },
+  guestBrand: { color: C.ink, fontSize: 26, fontWeight: '900', marginBottom: 4, textAlign: 'center' },
+  guestOnline: { color: C.orangeDark, fontSize: 13, fontWeight: '800', letterSpacing: 1.6, marginBottom: 4, textTransform: 'uppercase' },
+  guestTagline: { color: C.sub, fontSize: 15, marginBottom: 28 },
+  guestCard: { width: '100%', maxWidth: 480, backgroundColor: '#fff', borderRadius: 24, borderWidth: 1, borderColor: C.line, padding: 26 },
+  guestHeading: { fontSize: 24, fontWeight: '900', color: C.ink, marginBottom: 6 },
+  guestSub: { fontSize: 16, color: C.sub, marginBottom: 22, lineHeight: 24 },
+  guestBtn: { backgroundColor: C.orange, borderRadius: 16, minHeight: 60, alignItems: 'center', justifyContent: 'center' },
+  guestBtnTxt: { color: C.ink, fontWeight: '900', fontSize: 19 },
 
   // Profile banner
   profileBanner: { backgroundColor: Colors.navy, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 14, gap: 12 },

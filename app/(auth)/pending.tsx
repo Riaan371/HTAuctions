@@ -1,32 +1,35 @@
-import { View, Text, Pressable } from 'react-native';
+import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
 import { useAuthStore } from '../../lib/auth-store';
+import { C } from '../../components/LiveViewerParts';
 
 export default function Pending() {
   const signOut = useAuthStore((s) => s.signOut);
 
   return (
-    <View className="flex-1 bg-white items-center justify-center px-8">
-      <Text className="text-3xl mb-4">⏳</Text>
-      <Text className="text-2xl font-bold text-ink mb-2 text-center">
-        Application submitted
-      </Text>
-      <Text className="text-base text-ink/60 text-center mb-8">
-        Our team reviews new auctioneer accounts within 24 hours. We&#x2019;ll notify you by
-        email and push notification once you&#x2019;re approved and ready to publish your
-        first lot.
-      </Text>
-
-      <Pressable
-        onPress={() => router.replace('/(tabs)')}
-        className="bg-primary rounded-2xl py-4 px-8 items-center mb-3"
-      >
-        <Text className="text-white font-bold text-base">Browse auctions meanwhile</Text>
-      </Pressable>
-
-      <Pressable onPress={signOut}>
-        <Text className="text-ink/50 text-sm underline">Sign out</Text>
-      </Pressable>
+    <View style={s.root}>
+      <View style={s.card}>
+        <Text style={s.title}>Application submitted</Text>
+        <Text style={s.body}>
+          Our team reviews new accounts before they can take part. We will let you know once you are approved.
+        </Text>
+        <Pressable onPress={() => router.replace('/(tabs)')} style={s.btn}>
+          <Text style={s.btnTxt}>Browse the auction meanwhile</Text>
+        </Pressable>
+        <Pressable onPress={signOut} style={{ marginTop: 18, alignItems: 'center' }}>
+          <Text style={s.link}>Sign out</Text>
+        </Pressable>
+      </View>
     </View>
   );
 }
+
+const s = StyleSheet.create({
+  root: { flex: 1, backgroundColor: C.bg, alignItems: 'center', justifyContent: 'center', padding: 20 },
+  card: { width: '100%', maxWidth: 480, backgroundColor: '#fff', borderRadius: 24, borderWidth: 1, borderColor: C.line, padding: 28 },
+  title: { color: C.ink, fontSize: 26, fontWeight: '900', textAlign: 'center' },
+  body: { color: C.sub, fontSize: 16.5, lineHeight: 25, textAlign: 'center', marginTop: 12, marginBottom: 24 },
+  btn: { backgroundColor: C.orange, borderRadius: 16, minHeight: 60, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 20 },
+  btnTxt: { color: C.ink, fontWeight: '900', fontSize: 18 },
+  link: { color: C.sub, fontSize: 15.5, textDecorationLine: 'underline' },
+});

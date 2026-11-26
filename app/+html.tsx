@@ -13,7 +13,7 @@ export default function Root({ children }: PropsWithChildren) {
         <meta name="description" content="HT Auctions West Coast — Live auction marketplace. Bid on vehicles, livestock, property, equipment and more." />
 
         {/* PWA */}
-        <meta name="theme-color" content="#0D1B2A" />
+        <meta name="theme-color" content="#17293D" />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />

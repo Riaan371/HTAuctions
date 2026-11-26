@@ -6,9 +6,11 @@ export default function AuthLayout() {
       screenOptions={{
         headerShown: true,
         headerShadowVisible: false,
-        headerStyle: { backgroundColor: '#fff' },
+        headerStyle: { backgroundColor: '#EAF2F1' },
         headerTitle: '',
-        headerTintColor: '#0F172A',
+        headerTintColor: '#17293D',
+        headerBackTitle: 'Back',
+        contentStyle: { backgroundColor: '#EAF2F1' },
       }}
     />
   );

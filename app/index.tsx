@@ -3,6 +3,7 @@ import { View, Text, Pressable, StyleSheet, Image, ImageBackground } from 'react
 import { useEffect, useState } from 'react';
 import { useAuthStore } from '../lib/auth-store';
 import { Colors } from '../lib/theme';
+import { C } from '../components/LiveViewerParts';
 
 export default function Welcome() {
   const session = useAuthStore((s) => s.session);
@@ -41,7 +42,7 @@ export default function Welcome() {
         <Text style={s.tagline}>Online Auction</Text>
         <Text style={s.taglineSub}>South Africa's Live Auction Marketplace</Text>
         <View style={s.divider} />
-        <Text style={s.sub}>Bid live on vehicles, livestock, plant & equipment, collectibles and more — from anywhere in South Africa.</Text>
+        <Text style={s.sub}>Watch our live auctions and bid in real time, from your phone or computer.</Text>
 
         {!isInStandalone && (
           <Pressable onPress={handleInstall} style={s.installBtn}>
@@ -69,17 +70,17 @@ export default function Welcome() {
       <View style={s.btns}>
         <Link href="/(auth)/role" asChild>
           <Pressable style={s.btnPrimary}>
-            <Text style={s.btnPrimaryTxt}>Get Started — Register Free</Text>
+            <Text style={s.btnPrimaryTxt}>Register to bid</Text>
           </Pressable>
         </Link>
         <Link href="/(auth)/login" asChild>
           <Pressable style={s.btnSecondary}>
-            <Text style={s.btnSecondaryTxt}>I Already Have an Account</Text>
+            <Text style={s.btnSecondaryTxt}>Log in</Text>
           </Pressable>
         </Link>
         <Link href="/(tabs)" asChild>
           <Pressable style={{ alignItems: 'center', marginTop: 16, paddingBottom: 8 }}>
-            <Text style={s.guestTxt}>Continue as Guest →</Text>
+            <Text style={s.guestTxt}>Just watch as a guest →</Text>
           </Pressable>
         </Link>
       </View>
@@ -88,20 +89,20 @@ export default function Welcome() {
 }
 
 const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: Colors.navy, paddingHorizontal: 28 },
+  root: { flex: 1, backgroundColor: C.bg, paddingHorizontal: 24 },
   top: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  logo: { width: 120, height: 120, marginBottom: 20 },
-  title: { fontSize: 32, fontWeight: '800', color: '#fff', letterSpacing: 0.2, textAlign: 'center' },
-  tagline: { fontSize: 13, color: Colors.gold, fontWeight: '700', letterSpacing: 1, textTransform: 'uppercase', marginTop: 6, textAlign: 'center' },
-  taglineSub: { fontSize: 12, color: 'rgba(255,255,255,0.5)', marginTop: 4, textAlign: 'center' },
-  divider: { width: 48, height: 2, backgroundColor: Colors.gold, borderRadius: 2, marginVertical: 20 },
-  sub: { fontSize: 14, color: 'rgba(255,255,255,0.5)', textAlign: 'center', lineHeight: 22, maxWidth: 300 },
-  installBtn: { marginTop: 20, borderWidth: 1.5, borderColor: Colors.gold, borderRadius: 12, paddingVertical: 10, paddingHorizontal: 20 },
-  installBtnTxt: { color: Colors.gold, fontWeight: '700', fontSize: 13 },
-  btns: { paddingBottom: 48, gap: 12 },
-  btnPrimary: { backgroundColor: Colors.gold, borderRadius: 14, paddingVertical: 17, alignItems: 'center' },
-  btnPrimaryTxt: { color: Colors.navy, fontWeight: '800', fontSize: 16 },
-  btnSecondary: { borderRadius: 14, paddingVertical: 16, alignItems: 'center', borderWidth: 1.5, borderColor: 'rgba(224,123,57,0.5)' },
-  btnSecondaryTxt: { color: '#fff', fontWeight: '700', fontSize: 15 },
-  guestTxt: { color: 'rgba(255,255,255,0.4)', fontSize: 13 },
+  logo: { width: 132, height: 132, marginBottom: 20 },
+  title: { fontSize: 34, fontWeight: '900', color: C.ink, textAlign: 'center' },
+  tagline: { fontSize: 14, color: C.orangeDark, fontWeight: '800', letterSpacing: 1.6, textTransform: 'uppercase', marginTop: 8, textAlign: 'center' },
+  taglineSub: { fontSize: 15, color: C.sub, marginTop: 6, textAlign: 'center' },
+  divider: { width: 56, height: 3, backgroundColor: C.orange, borderRadius: 2, marginVertical: 22 },
+  sub: { fontSize: 17.5, color: C.ink, textAlign: 'center', lineHeight: 27, maxWidth: 400 },
+  installBtn: { marginTop: 22, borderWidth: 1.5, borderColor: C.ink, borderRadius: 14, paddingVertical: 12, paddingHorizontal: 22, backgroundColor: '#fff' },
+  installBtnTxt: { color: C.ink, fontWeight: '800', fontSize: 15 },
+  btns: { paddingBottom: 48, gap: 14, width: '100%', maxWidth: 480, alignSelf: 'center' },
+  btnPrimary: { backgroundColor: C.orange, borderRadius: 16, minHeight: 64, alignItems: 'center', justifyContent: 'center' },
+  btnPrimaryTxt: { color: C.ink, fontWeight: '900', fontSize: 20 },
+  btnSecondary: { borderRadius: 16, minHeight: 60, alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: C.ink, backgroundColor: '#fff' },
+  btnSecondaryTxt: { color: C.ink, fontWeight: '800', fontSize: 18 },
+  guestTxt: { color: C.sub, fontSize: 16, textDecorationLine: 'underline' },
 });
