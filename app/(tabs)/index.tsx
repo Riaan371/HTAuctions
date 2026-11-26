@@ -196,6 +196,9 @@ function NextLiveCard({ events, loadError }: { events: any[]; loadError?: boolea
             Come back at this time to watch the auction live and bid from your phone or computer.
             Turn on notifications and we'll alert you the moment we go live.
           </Text>
+          <Pressable onPress={() => router.push(`/live/${upcoming.auction_id}`)} style={s.nlBtn}>
+            <Text style={s.nlBtnTxt}>View the lots & photos →</Text>
+          </Pressable>
         </View>
       </View>
     );

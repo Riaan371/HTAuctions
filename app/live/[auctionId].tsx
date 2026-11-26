@@ -1,4 +1,4 @@
-import { View, Text, Pressable, ActivityIndicator, Alert, Platform, StyleSheet, Image, ScrollView } from 'react-native';
+import { View, Text, Pressable, ActivityIndicator, Alert, Platform, StyleSheet, ScrollView, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Stack, useLocalSearchParams, router } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
@@ -8,6 +8,7 @@ import { useAuthStore } from '../../lib/auth-store';
 import { Colors } from '../../lib/theme';
 import { getAgoraToken, markSessionLive, markSessionEnded, HOST_UID } from '../../lib/agora';
 import { formatZAR } from '../../components/LotCard';
+import { PhotoViewer, LotGallery, BidPanel, BidHistory, LotsList, LotGrid, type LiveLot, type LiveBid } from '../../components/LiveViewerParts';
 
 const APP_ID = process.env.EXPO_PUBLIC_AGORA_APP_ID ?? '';
 const VIDEO_ID = 'agora-video';
@@ -94,7 +95,7 @@ export default function LiveRoom() {
     queryKey: ['live-session-status', auctionId],
     queryFn: async () => {
       const { data } = await supabase
-        .from('live_sessions').select('status, scheduled_at, title')
+        .from('live_sessions').select('status, scheduled_at, title, lot_ids')
         .eq('auction_id', auctionId).maybeSingle();
       return data;
     },
@@ -114,18 +115,6 @@ export default function LiveRoom() {
       setStatus('ended');
     }
   }, [isHost, sessionInfo?.status]);
-
-  // Preview lots (photos + starting bid only) shown while waiting for the live session to start
-  const { data: previewLots } = useQuery({
-    queryKey: ['live-preview-lots', auctionId],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from('lots').select('id, title, photos, starting_bid, category')
-        .eq('auction_id', auctionId).order('created_at');
-      return data ?? [];
-    },
-    enabled: !canAccess,
-  });
 
   const { data: liveSession } = useQuery({
     queryKey: ['live-session-detail', auctionId],
@@ -151,17 +140,17 @@ export default function LiveRoom() {
     queryKey: ['live-lot', auctionId, activeLotId],
     queryFn: async () => {
       if (activeLotId) {
-        const { data } = await supabase.from('lots').select('id, title, current_bid, starting_bid, photos').eq('id', activeLotId).single();
-        return data;
+        const { data } = await supabase.from('lots').select('id, title, description, current_bid, starting_bid, increment, photos, closed, no_sale, winner_id').eq('id', activeLotId).single();
+        return data as LiveLot | null;
       }
       const { data } = await supabase
-        .from('lots').select('id, title, current_bid, starting_bid, photos')
+        .from('lots').select('id, title, description, current_bid, starting_bid, increment, photos, closed, no_sale, winner_id')
         .eq('auction_id', auctionId).is('winner_id', null)
         .order('created_at').limit(1).maybeSingle();
-      return data;
+      return data as LiveLot | null;
     },
     enabled: canAccess,
-    refetchInterval: 4000,
+    refetchInterval: 3000,
   });
 
   const { data: topBid } = useQuery({
@@ -183,6 +172,67 @@ export default function LiveRoom() {
 
   const totalLots = liveSession?.lot_ids?.length ?? 0;
 
+  // Every lot in this auction, in running order — drives the pre-live photo
+  // browser and the "all lots" list during the auction.
+  const lotIds: string[] | null = (liveSession?.lot_ids ?? sessionInfo?.lot_ids) ?? null;
+  const { data: allLots } = useQuery({
+    queryKey: ['live-all-lots', auctionId, (lotIds ?? []).join(',')],
+    queryFn: async () => {
+      let q = supabase.from('lots').select('id, title, description, photos, starting_bid, current_bid, increment, category, closed, no_sale, winner_id');
+      q = lotIds?.length ? q.in('id', lotIds) : q.eq('auction_id', auctionId);
+      const { data } = await q;
+      const rows = (data ?? []) as LiveLot[];
+      if (lotIds?.length) rows.sort((a, b) => lotIds.indexOf(a.id) - lotIds.indexOf(b.id));
+      return rows;
+    },
+    refetchInterval: 6000,
+  });
+
+  // Bids on the lot that is on the block (highest first).
+  const bidLotId = currentLot?.id ?? null;
+  const { data: liveBids } = useQuery({
+    queryKey: ['live-bids', bidLotId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('bids')
+        .select('id, amount, created_at, bidder_id, users(full_name, screen_name)')
+        .eq('lot_id', bidLotId)
+        .order('amount', { ascending: false })
+        .limit(15);
+      return (data ?? []) as unknown as LiveBid[];
+    },
+    enabled: !!bidLotId && canAccess,
+    refetchInterval: 2500,
+  });
+
+  const { width: winWidth } = useWindowDimensions();
+  const wide = winWidth >= 900;
+  const [viewLot, setViewLot] = useState<LiveLot | null>(null);
+
+  // Place a bid straight from the live screen so the viewer never leaves the video.
+  // Returns null on success, or a message to show the bidder.
+  async function placeBidAmount(amount: number): Promise<string | null> {
+    if (!session) return 'Please log in to bid.';
+    if (!currentLot) return 'No lot is on the block right now.';
+    if (currentLot.closed || currentLot.winner_id || currentLot.no_sale) return 'Bidding on this lot has closed.';
+    // Re-check the latest bid just before inserting (another bidder may have beaten us to it).
+    const { data: latest } = await supabase
+      .from('bids').select('amount').eq('lot_id', currentLot.id)
+      .order('amount', { ascending: false }).limit(1).maybeSingle();
+    if (latest && amount <= latest.amount) {
+      queryClient.invalidateQueries({ queryKey: ['live-bids'] });
+      return `Someone just bid ${'R' + Math.round(latest.amount).toLocaleString('en-ZA')}. Please bid again.`;
+    }
+    const { error: bidErr } = await supabase.from('bids').insert({ lot_id: currentLot.id, bidder_id: session.user.id, amount });
+    if (bidErr) {
+      if (/row-level security|policy/i.test(bidErr.message)) return 'Your account has not been approved to bid yet. Please contact HT Auctions.';
+      return bidErr.message;
+    }
+    queryClient.invalidateQueries({ queryKey: ['live-bids'] });
+    queryClient.invalidateQueries({ queryKey: ['live-lot'] });
+    return null;
+  }
+
   async function nextLot() {
     const next = lotIndex + 1;
     if (next >= totalLots) { Alert.alert('Last lot', 'No more lots in this session.'); return; }
@@ -201,6 +251,7 @@ export default function LiveRoom() {
       .channel(`live-bids-${auctionId}-${Date.now()}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'bids' }, () => {
         queryClient.invalidateQueries({ queryKey: ['live-lot', auctionId] });
+        queryClient.invalidateQueries({ queryKey: ['live-bids'] });
       })
       .subscribe();
     return () => { supabase.removeChannel(channel); };
@@ -411,6 +462,40 @@ export default function LiveRoom() {
       ? 'Waiting for the auctioneer’s video...'
       : 'The auctioneer’s video appears here once you join.';
 
+  // Client-side pieces, assembled differently for wide (side-by-side) and narrow (stacked) screens.
+  const userId = session?.user.id ?? null;
+  const lotNumber = currentLot ? Math.max(1, (lotIds?.indexOf(currentLot.id) ?? lotIndex) + 1) : 1;
+  const bidPanelEl = currentLot ? (
+    <BidPanel
+      key={currentLot.id}
+      lot={currentLot}
+      lotNumber={lotNumber}
+      totalLots={lotIds?.length ?? allLots?.length ?? 0}
+      bids={liveBids ?? []}
+      userId={userId}
+      onBid={placeBidAmount}
+      onLogin={() => router.push('/(auth)/role')}
+    />
+  ) : (
+    <View style={s.waitBanner}>
+      <Text style={s.waitTitle}>Waiting for the next lot</Text>
+      <Text style={s.waitSub}>The auctioneer will bring up the next lot shortly.</Text>
+    </View>
+  );
+  const historyEl = currentLot ? <BidHistory bids={liveBids ?? []} userId={userId} /> : null;
+  const galleryEl = currentLot ? (
+    <View style={{ marginBottom: 14 }}>
+      <Text style={s.sectionHead}>Photos of this lot</Text>
+      <LotGallery key={currentLot.id} lot={currentLot} onOpen={setViewLot} />
+    </View>
+  ) : null;
+  const lotsEl = <LotsList lots={allLots ?? []} activeLotId={currentLot?.id ?? null} onOpen={setViewLot} />;
+  const leaveEl = status === 'live' ? (
+    <Pressable onPress={leave} style={[s.outlineBtn, { marginTop: 4, marginBottom: 12 }]}>
+      <Text style={s.outlineBtnTxt}>Leave auction</Text>
+    </Pressable>
+  ) : null;
+
   return (
     <SafeAreaView style={[s.root, { backgroundColor: '#000' }]}>
       <Stack.Screen options={{ headerShown: true, headerTitle: 'Live Auction', headerStyle: { backgroundColor: '#000' }, headerTintColor: '#fff', headerLeft: () => (
@@ -420,46 +505,109 @@ export default function LiveRoom() {
       ) }} />
 
       {!canAccess ? (
-        <ScrollView style={s.body} contentContainerStyle={s.bodyContent}>
+        /* ---- Client, auction not live: countdown + photos of every lot ---- */
+        <ScrollView style={s.body} contentContainerStyle={[s.bodyContent, wide && { maxWidth: 1180 }]}>
           <View style={s.waitBanner}>
-            <Text style={{ fontSize: 36, marginBottom: 8 }}>🔒</Text>
-            <Text style={{ color: '#fff', fontSize: 18, fontWeight: '800', marginBottom: 8, textAlign: 'center' }}>
-              Bidding Opens When Live
-            </Text>
-            <Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 13, textAlign: 'center', lineHeight: 19 }}>
-              Browse the lots below. Bidding unlocks once the auctioneer starts the session.
-            </Text>
-            {sessionInfo?.scheduled_at && (
-              <Text style={{ color: Colors.gold, fontSize: 15, fontWeight: '700', marginTop: 10, textAlign: 'center' }}>
-                📅 {new Date(sessionInfo.scheduled_at).toLocaleDateString('en-ZA', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}{'\n'}
-                🕙 {new Date(sessionInfo.scheduled_at).toLocaleTimeString('en-ZA', { hour: '2-digit', minute: '2-digit' })}
-              </Text>
+            {sessionInfo?.status === 'ended' ? (
+              <>
+                <Text style={s.waitTitle}>This auction has ended</Text>
+                <Text style={s.waitSub}>Thank you for joining. Watch the home screen for the next live auction.</Text>
+              </>
+            ) : (
+              <>
+                <Text style={s.waitKicker}>LIVE AUCTION</Text>
+                <Text style={s.waitTitle}>{sessionInfo?.title ?? 'Live Auction'}</Text>
+                {sessionInfo?.scheduled_at && (
+                  <Text style={s.waitWhen}>
+                    {new Date(sessionInfo.scheduled_at).toLocaleDateString('en-ZA', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+                    {'  ·  '}
+                    {new Date(sessionInfo.scheduled_at).toLocaleTimeString('en-ZA', { hour: '2-digit', minute: '2-digit', hour12: false })}
+                  </Text>
+                )}
+                <Text style={s.waitSub}>
+                  Live video and bidding open when the auction starts. Browse the lots below. This page switches to the live auction by itself.
+                </Text>
+              </>
             )}
           </View>
 
-          {(previewLots ?? []).map((lot: any) => (
-            <Pressable key={lot.id} onPress={() => router.push(`/lot/${lot.id}`)} style={s.previewLotCard}>
-              {lot.photos?.[0] ? (
-                <Image source={{ uri: lot.photos[0] }} style={s.previewLotImg} resizeMode="cover" />
-              ) : (
-                <View style={[s.previewLotImg, { alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.05)' }]}>
-                  <Text style={{ fontSize: 28 }}>📷</Text>
-                </View>
-              )}
-              <View style={{ flex: 1, padding: 12, opacity: 0.55 }}>
-                <Text style={s.previewLotCat}>{lot.category ?? '—'}</Text>
-                <Text style={s.previewLotTitle} numberOfLines={2}>{lot.title}</Text>
-                <Text style={s.previewLotBid}>Opening Bid: {formatZAR(lot.starting_bid)}</Text>
-                <View style={s.previewLockedBadge}>
-                  <Text style={s.previewLockedTxt}>🔒 Locked until live</Text>
-                </View>
-              </View>
-            </Pressable>
-          ))}
+          {(allLots?.length ?? 0) > 0 ? (
+            <>
+              <Text style={s.sectionHead}>Lots in this auction ({allLots!.length})</Text>
+              <LotGrid lots={allLots!} onOpen={setViewLot} columns={wide ? 3 : 1} />
+            </>
+          ) : (
+            <Text style={[s.waitSub, { textAlign: 'center' }]}>The lots for this auction will appear here.</Text>
+          )}
 
-          <Pressable onPress={() => router.push('/(tabs)/')} style={[s.outlineBtn, { marginTop: 12 }]}>
+          <Pressable onPress={() => router.push('/(tabs)/')} style={[s.outlineBtn, { marginTop: 20 }]}>
             <Text style={s.outlineBtnTxt}>← Back to Home</Text>
           </Pressable>
+          <PhotoViewer key={viewLot?.id ?? 'none'} lot={viewLot} onClose={() => setViewLot(null)} />
+        </ScrollView>
+      ) : !isHost ? (
+        /* ---- Client, auction live: video + sound, bidding, bid history, photos ---- */
+        <ScrollView style={s.body} contentContainerStyle={[s.bodyContent, wide && { maxWidth: 1180 }]}>
+          <View style={wide ? s.wideRow : undefined}>
+            <View style={wide ? s.colMain : undefined}>
+              <View style={s.liveRow}>
+                {status === 'live' ? (
+                  <>
+                    <View style={s.liveDot} />
+                    <Text style={s.liveTxt}>LIVE</Text>
+                    <Text style={s.liveTitle} numberOfLines={1}>{sessionInfo?.title ?? ''}</Text>
+                  </>
+                ) : (
+                  <Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 14 }}>{sessionInfo?.title ?? 'Live Auction'} is on air</Text>
+                )}
+              </View>
+
+              {/* Live video. The first View stays childless: Agora injects the <video> into it. */}
+              <View style={s.videoWrap}>
+                <View id={VIDEO_ID} style={s.video} />
+                {!hasVideo && status === 'idle' && (
+                  <View style={s.videoOverlay}>
+                    <Pressable onPress={join} style={s.joinBtn}>
+                      <Text style={s.joinBtnTxt}>▶  Watch & listen live</Text>
+                    </Pressable>
+                    <Text style={s.joinHint}>Tap to start the video and sound</Text>
+                  </View>
+                )}
+                {!hasVideo && status === 'joining' && (
+                  <View style={s.videoOverlay}>
+                    <ActivityIndicator color={Colors.primary} />
+                    <Text style={s.joinHint}>Connecting…</Text>
+                  </View>
+                )}
+                {!hasVideo && status === 'live' && (
+                  <View style={s.videoPlaceholder}>
+                    <Text style={s.videoPlaceholderTxt}>Waiting for the auctioneer's video…</Text>
+                  </View>
+                )}
+              </View>
+
+              {error && (
+                <View style={s.errorBox}>
+                  <Text style={s.errorTxt}>{error}</Text>
+                </View>
+              )}
+
+              {!wide && bidPanelEl}
+              {!wide && historyEl}
+              {galleryEl}
+              {lotsEl}
+              {!wide && leaveEl}
+            </View>
+
+            {wide && (
+              <View style={s.colSide}>
+                {bidPanelEl}
+                {historyEl}
+                {leaveEl}
+              </View>
+            )}
+          </View>
+          <PhotoViewer key={viewLot?.id ?? 'none'} lot={viewLot} onClose={() => setViewLot(null)} />
         </ScrollView>
       ) : (
       <ScrollView style={s.body} contentContainerStyle={s.bodyContent}>
@@ -632,7 +780,20 @@ const s = StyleSheet.create({
   joiningBox: { backgroundColor: 'rgba(217,164,65,0.15)', borderRadius: 18, paddingVertical: 16, alignItems: 'center' },
   outlineBtn: { borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)', borderRadius: 18, paddingVertical: 16, alignItems: 'center' },
   outlineBtnTxt: { color: 'rgba(255,255,255,0.8)', fontWeight: '700', fontSize: 15 },
-  waitBanner: { backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: 16, padding: 18, alignItems: 'center', marginBottom: 18 },
+  waitBanner: { backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: 16, padding: 20, alignItems: 'center', marginBottom: 18 },
+  waitKicker: { color: Colors.gold, fontSize: 11, fontWeight: '800', letterSpacing: 1.6, marginBottom: 6 },
+  waitTitle: { color: '#fff', fontSize: 20, fontWeight: '800', textAlign: 'center' },
+  waitWhen: { color: Colors.gold, fontSize: 16, fontWeight: '700', marginTop: 10, textAlign: 'center' },
+  waitSub: { color: 'rgba(255,255,255,0.6)', fontSize: 13.5, lineHeight: 20, marginTop: 10, textAlign: 'center', maxWidth: 520 },
+  sectionHead: { color: '#fff', fontSize: 16, fontWeight: '800', marginBottom: 10 },
+  wideRow: { flexDirection: 'row', gap: 24, alignItems: 'flex-start' },
+  colMain: { flex: 3, minWidth: 0 },
+  colSide: { flex: 2, minWidth: 320 },
+  liveTitle: { color: 'rgba(255,255,255,0.7)', fontSize: 14, flex: 1 },
+  videoOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center', padding: 20 },
+  joinBtn: { backgroundColor: Colors.gold, borderRadius: 99, paddingVertical: 16, paddingHorizontal: 32 },
+  joinBtnTxt: { color: Colors.navy, fontWeight: '900', fontSize: 17 },
+  joinHint: { color: 'rgba(255,255,255,0.6)', fontSize: 13, marginTop: 12 },
   previewLotCard: { flexDirection: 'row', backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 14, overflow: 'hidden', marginBottom: 12 },
   previewLotImg: { width: 100, height: 100 },
   previewLotCat: { color: 'rgba(255,255,255,0.4)', fontSize: 10, fontWeight: '700', letterSpacing: 0.5, marginBottom: 2 },
