@@ -172,6 +172,12 @@ export function BidPanel({
           </Text>
           {sold && top && <Text style={s.closedSub}>Winning bidder: {bidderName(top)}</Text>}
         </View>
+      ) : iAmTop ? (
+        // You already lead: no bid controls until someone outbids you.
+        <View style={[s.closedBox, s.closedSold]}>
+          <Text style={s.closedTxt}>You are the highest bidder</Text>
+          <Text style={s.closedSub}>Your bid of {formatZAR(top!.amount)} is leading. You can bid again if someone outbids you.</Text>
+        </View>
       ) : (
         <>
           <View style={s.stepper}>

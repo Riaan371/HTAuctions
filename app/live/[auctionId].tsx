@@ -217,8 +217,12 @@ export default function LiveRoom() {
     if (currentLot.closed || currentLot.winner_id || currentLot.no_sale) return 'Bidding on this lot has closed.';
     // Re-check the latest bid just before inserting (another bidder may have beaten us to it).
     const { data: latest } = await supabase
-      .from('bids').select('amount').eq('lot_id', currentLot.id)
+      .from('bids').select('amount, bidder_id').eq('lot_id', currentLot.id)
       .order('amount', { ascending: false }).limit(1).maybeSingle();
+    if (latest && latest.bidder_id === session.user.id) {
+      queryClient.invalidateQueries({ queryKey: ['live-bids'] });
+      return 'You are already the highest bidder.';
+    }
     if (latest && amount <= latest.amount) {
       queryClient.invalidateQueries({ queryKey: ['live-bids'] });
       return `Someone just bid ${'R' + Math.round(latest.amount).toLocaleString('en-ZA')}. Please bid again.`;
