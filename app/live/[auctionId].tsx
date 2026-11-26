@@ -152,6 +152,7 @@ export default function LiveRoom() {
     },
     enabled: canAccess,
     refetchInterval: 3000,
+    placeholderData: (prev) => prev, // keep showing the previous lot while the next one loads (no flicker)
   });
 
   const { data: topBid } = useQuery({
@@ -238,17 +239,42 @@ export default function LiveRoom() {
     return null;
   }
 
+  // Lot changes are always applied relative to what the SERVER says is on the
+  // block (not a local counter), and extra taps while a change is in flight are
+  // ignored — so a double-tap or a slow connection can never skip lots.
+  const changingLotRef = useRef(false);
+  async function setServerLot(target: number) {
+    if (changingLotRef.current) return;
+    if (target < 0 || target >= totalLots) return;
+    changingLotRef.current = true;
+    setLotIndex(target);
+    try {
+      const { error: e } = await supabase.from('live_sessions').update({ current_lot_index: target })
+        .eq('auction_id', auctionId).eq('status', 'live');
+      if (e) Alert.alert('Could not change lot', e.message);
+      queryClient.invalidateQueries({ queryKey: ['live-session-detail', auctionId] });
+    } finally {
+      setTimeout(() => { changingLotRef.current = false; }, 800);
+    }
+  }
+
+  async function serverLotIndex(): Promise<number> {
+    const { data } = await supabase.from('live_sessions').select('current_lot_index')
+      .eq('auction_id', auctionId).eq('status', 'live').maybeSingle();
+    return data?.current_lot_index ?? lotIndex;
+  }
+
   async function nextLot() {
-    const next = lotIndex + 1;
-    if (next >= totalLots) { Alert.alert('Last lot', 'No more lots in this session.'); return; }
-    setLotIndex(next);
-    await supabase.from('live_sessions').update({ current_lot_index: next }).eq('auction_id', auctionId).eq('status', 'live');
+    if (changingLotRef.current) return;
+    const cur = await serverLotIndex();
+    if (cur + 1 >= totalLots) { Alert.alert('Last lot', 'There are no more lots in this auction.'); return; }
+    await setServerLot(cur + 1);
   }
 
   async function prevLot() {
-    const prev = Math.max(0, lotIndex - 1);
-    setLotIndex(prev);
-    await supabase.from('live_sessions').update({ current_lot_index: prev }).eq('auction_id', auctionId).eq('status', 'live');
+    if (changingLotRef.current) return;
+    const cur = await serverLotIndex();
+    await setServerLot(cur - 1);
   }
 
   useEffect(() => {
@@ -501,8 +527,7 @@ export default function LiveRoom() {
   async function goToLot(l: LiveLot) {
     const idx = (lotIds ?? []).indexOf(l.id);
     if (idx < 0) { setViewLot(l); return; }
-    setLotIndex(idx);
-    await supabase.from('live_sessions').update({ current_lot_index: idx }).eq('auction_id', auctionId).eq('status', 'live');
+    await setServerLot(idx);
   }
 
   async function endAuction() {
@@ -517,7 +542,7 @@ export default function LiveRoom() {
   const bidName = (b: LiveBid) => b.users?.screen_name ?? b.users?.full_name ?? 'Bidder';
   const hostConsoleEl = currentLot ? (
     <View style={s.hCard}>
-      <Text style={s.hKicker}>LOT {lotIndex + 1} OF {Math.max(totalLots, 1)} · ON THE BLOCK</Text>
+      <Text style={s.hKicker}>LOT {Math.max(1, (lotIds?.indexOf(currentLot.id) ?? lotIndex) + 1)} OF {Math.max(totalLots, 1)} · ON THE BLOCK</Text>
       <Text style={s.hTitle}>{currentLot.title}</Text>
 
       {(currentLot.photos?.length ?? 0) > 0 && (
