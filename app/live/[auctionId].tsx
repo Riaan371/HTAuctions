@@ -466,6 +466,11 @@ export default function LiveRoom() {
       ? 'Waiting for the auctioneer’s video...'
       : 'The auctioneer’s video appears here once you join.';
 
+  function goFullscreen() {
+    const el: any = typeof document !== 'undefined' ? document.getElementById(VIDEO_ID)?.parentElement : null;
+    try { (el?.requestFullscreen ?? el?.webkitRequestFullscreen)?.call(el); } catch {}
+  }
+
   // Client-side pieces, assembled differently for wide (side-by-side) and narrow (stacked) screens.
   const userId = session?.user.id ?? null;
   const lotNumber = currentLot ? Math.max(1, (lotIds?.indexOf(currentLot.id) ?? lotIndex) + 1) : 1;
@@ -510,7 +515,7 @@ export default function LiveRoom() {
 
       {!canAccess ? (
         /* ---- Client, auction not live: countdown + photos of every lot ---- */
-        <ScrollView style={s.body} contentContainerStyle={[s.bodyContent, wide && { maxWidth: 1180 }]}>
+        <ScrollView style={[s.body, wide && { maxWidth: 1280 }]} contentContainerStyle={s.bodyContent}>
           <View style={s.waitBanner}>
             {sessionInfo?.status === 'ended' ? (
               <>
@@ -551,7 +556,7 @@ export default function LiveRoom() {
         </ScrollView>
       ) : !isHost ? (
         /* ---- Client, auction live: video + sound, bidding, bid history, photos ---- */
-        <ScrollView style={s.body} contentContainerStyle={[s.bodyContent, wide && { maxWidth: 1180 }]}>
+        <ScrollView style={[s.body, wide && { maxWidth: 1600 }]} contentContainerStyle={s.bodyContent}>
           <View style={wide ? s.wideRow : undefined}>
             <View style={wide ? s.colMain : undefined}>
               <View style={s.liveRow}>
@@ -567,8 +572,13 @@ export default function LiveRoom() {
               </View>
 
               {/* Live video. The first View stays childless: Agora injects the <video> into it. */}
-              <View style={s.videoWrap}>
+              <View style={[s.videoWrap, !wide && s.videoWrapFull]}>
                 <View id={VIDEO_ID} style={s.video} />
+                {hasVideo && Platform.OS === 'web' && (
+                  <Pressable onPress={goFullscreen} style={s.fsBtn}>
+                    <Text style={s.fsTxt}>⛶ Full screen</Text>
+                  </Pressable>
+                )}
                 {!hasVideo && status === 'idle' && (
                   <View style={s.videoOverlay}>
                     <Pressable onPress={join} style={s.joinBtn}>
@@ -791,8 +801,11 @@ const s = StyleSheet.create({
   waitSub: { color: 'rgba(255,255,255,0.6)', fontSize: 13.5, lineHeight: 20, marginTop: 10, textAlign: 'center', maxWidth: 520 },
   sectionHead: { color: '#fff', fontSize: 16, fontWeight: '800', marginBottom: 10 },
   wideRow: { flexDirection: 'row', gap: 24, alignItems: 'flex-start' },
-  colMain: { flex: 3, minWidth: 0 },
-  colSide: { flex: 2, minWidth: 320 },
+  colMain: { flex: 1, minWidth: 0 },
+  colSide: { width: 380 },
+  videoWrapFull: { width: 'auto', marginHorizontal: -20, borderRadius: 0, borderWidth: 0 },
+  fsBtn: { position: 'absolute', right: 10, bottom: 10, backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6 },
+  fsTxt: { color: '#fff', fontSize: 12, fontWeight: '700' },
   liveTitle: { color: 'rgba(255,255,255,0.7)', fontSize: 14, flex: 1 },
   videoOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center', padding: 20 },
   joinBtn: { backgroundColor: Colors.gold, borderRadius: 99, paddingVertical: 16, paddingHorizontal: 32 },
