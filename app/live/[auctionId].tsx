@@ -1,4 +1,4 @@
-import { View, Text, Pressable, ActivityIndicator, Alert, Platform, StyleSheet, ScrollView, useWindowDimensions } from 'react-native';
+import { View, Text, Pressable, ActivityIndicator, Alert, Platform, StyleSheet, ScrollView, Image, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Stack, useLocalSearchParams, router } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
@@ -260,6 +260,35 @@ export default function LiveRoom() {
       .subscribe();
     return () => { supabase.removeChannel(channel); };
   }, [auctionId]);
+
+  // Result of the lot on the block, set by the auctioneer.
+  const lotClosed = !!(currentLot?.closed || currentLot?.winner_id || currentLot?.no_sale);
+
+  async function closeLot(kind: 'online' | 'room' | 'nosale') {
+    if (!currentLot) return;
+    const top = liveBids?.[0];
+    let patch: Record<string, unknown>;
+    if (kind === 'online') {
+      if (!top) return;
+      patch = { closed: true, no_sale: false, winner_id: top.bidder_id, current_bid: top.amount };
+    } else if (kind === 'room') {
+      patch = { closed: true, no_sale: false, winner_id: null };
+    } else {
+      patch = { closed: true, no_sale: true, winner_id: null };
+    }
+    const { error: e } = await supabase.from('lots').update(patch).eq('id', currentLot.id);
+    if (e) { Alert.alert('Could not update the lot', e.message); return; }
+    queryClient.invalidateQueries({ queryKey: ['live-lot'] });
+    queryClient.invalidateQueries({ queryKey: ['live-all-lots'] });
+  }
+
+  async function reopenLot() {
+    if (!currentLot) return;
+    const { error: e } = await supabase.from('lots').update({ closed: false, no_sale: false, winner_id: null }).eq('id', currentLot.id);
+    if (e) { Alert.alert('Could not reopen the lot', e.message); return; }
+    queryClient.invalidateQueries({ queryKey: ['live-lot'] });
+    queryClient.invalidateQueries({ queryKey: ['live-all-lots'] });
+  }
 
   // Host: list cameras/microphones (asks the browser for permission) and show a
   // local preview. A capture card or USB mixer appears here as just another device.
@@ -663,36 +692,73 @@ export default function LiveRoom() {
         {/* Current lot */}
         {currentLot && (
           <View style={s.lotCard}>
-            <View style={{ padding: 14 }}>
-              {totalLots > 1 && (
-                <Text style={s.lotCounter}>LOT {lotIndex + 1} OF {totalLots}</Text>
-              )}
+            <View style={{ padding: 16 }}>
+              <Text style={s.lotCounter}>LOT {lotIndex + 1} OF {Math.max(totalLots, 1)}</Text>
               <Text style={s.lotLabel}>NOW ON THE BLOCK</Text>
               <Text style={s.lotTitle}>{currentLot.title}</Text>
-              <Text style={s.lotBid}>{formatZAR(currentLot.current_bid ?? currentLot.starting_bid)}</Text>
-              {topBid && (
-                <View style={{ backgroundColor: 'rgba(22,163,74,0.15)', borderRadius: 8, padding: 8, marginTop: 4, marginBottom: 4 }}>
-                  <Text style={{ color: '#16A34A', fontWeight: '700', fontSize: 13 }}>
-                    🏆 Top bidder: {topBid.users?.screen_name ?? topBid.users?.full_name ?? 'Unknown'}
-                  </Text>
+
+              {(currentLot.photos?.length ?? 0) > 0 && (
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, marginTop: 12 }}>
+                  {currentLot.photos!.map((p, i) => (
+                    <Image key={i} source={{ uri: p }} style={{ width: 84, height: 64, borderRadius: 8, backgroundColor: '#222' }} resizeMode="cover" />
+                  ))}
+                </ScrollView>
+              )}
+
+              <Text style={s.lotBid}>{formatZAR(liveBids?.[0]?.amount ?? currentLot.starting_bid)}</Text>
+              <Text style={{ color: 'rgba(255,255,255,0.55)', fontSize: 13 }}>
+                {liveBids?.length ? `Highest online bid · ${liveBids.length} online bid${liveBids.length === 1 ? '' : 's'}` : 'Opening bid · no online bids yet'}
+              </Text>
+
+              {(liveBids ?? []).slice(0, 5).map((b, i) => (
+                <View key={b.id} style={s.hostBidRow}>
+                  <Text style={[s.hostBidName, i === 0 && { color: '#fbbf24' }]} numberOfLines={1}>{b.users?.screen_name ?? b.users?.full_name ?? 'Bidder'}</Text>
+                  <Text style={[s.hostBidAmt, i === 0 && { color: '#fbbf24' }]}>{formatZAR(b.amount)}</Text>
                 </View>
-              )}
-              {session && (
-                <Pressable onPress={() => router.push(`/lot/${currentLot.id}`)} style={[s.bidBtn, isHost && { backgroundColor: '#16A34A' }]}>
-                  <Text style={s.bidBtnTxt}>{isHost ? '📋 View Live Bids' : 'Place a Bid'}</Text>
-                </Pressable>
-              )}
+              ))}
             </View>
-            {/* Auctioneer lot navigation */}
-            {isHost && status === 'live' && totalLots > 1 && (
+
+            {status === 'live' && (
+              <View style={s.hostActions}>
+                {lotClosed ? (
+                  <>
+                    <Text style={s.hostResult}>
+                      {currentLot.winner_id
+                        ? `SOLD online to ${liveBids?.find((b) => b.bidder_id === currentLot.winner_id)?.users?.screen_name ?? 'bidder'} for ${formatZAR(currentLot.current_bid)}`
+                        : currentLot.no_sale ? 'NO SALE' : 'SOLD IN THE ROOM'}
+                    </Text>
+                    <Pressable onPress={reopenLot} style={s.hostGhost}><Text style={s.hostGhostTxt}>Reopen this lot</Text></Pressable>
+                  </>
+                ) : (
+                  <>
+                    <Pressable onPress={() => closeLot('online')} disabled={!liveBids?.length} style={[s.hostSold, !liveBids?.length && { opacity: 0.35 }]}>
+                      <Text style={s.hostSoldTxt}>
+                        {liveBids?.length ? `Sold online: ${liveBids[0].users?.screen_name ?? liveBids[0].users?.full_name ?? 'bidder'} · ${formatZAR(liveBids[0].amount)}` : 'Sold online (no online bids)'}
+                      </Text>
+                    </Pressable>
+                    <View style={{ flexDirection: 'row', gap: 10 }}>
+                      <Pressable onPress={() => closeLot('room')} style={[s.hostGhost, { flex: 1 }]}><Text style={s.hostGhostTxt}>Sold in the room</Text></Pressable>
+                      <Pressable onPress={() => closeLot('nosale')} style={[s.hostGhost, { flex: 1 }]}><Text style={s.hostGhostTxt}>No sale</Text></Pressable>
+                    </View>
+                  </>
+                )}
+              </View>
+            )}
+
+            {status === 'live' && (
               <View style={s.lotNav}>
                 <Pressable onPress={prevLot} disabled={lotIndex === 0} style={[s.navBtn, { opacity: lotIndex === 0 ? 0.3 : 1 }]}>
-                  <Text style={s.navBtnTxt}>← Prev</Text>
+                  <Text style={s.navBtnTxt}>← Previous lot</Text>
                 </Pressable>
-                <Pressable onPress={nextLot} disabled={lotIndex >= totalLots - 1} style={[s.navBtn, { opacity: lotIndex >= totalLots - 1 ? 0.3 : 1 }]}>
-                  <Text style={s.navBtnTxt}>Next →</Text>
+                <Pressable onPress={nextLot} disabled={lotIndex >= totalLots - 1} style={[s.navBtn, s.navNext, { opacity: lotIndex >= totalLots - 1 ? 0.3 : 1 }]}>
+                  <Text style={[s.navBtnTxt, { color: '#17293D' }]}>Next lot →</Text>
                 </Pressable>
               </View>
+            )}
+            {status === 'live' && totalLots > 0 && lotIndex >= totalLots - 1 && (
+              <Text style={{ color: 'rgba(255,255,255,0.55)', fontSize: 13, textAlign: 'center', paddingBottom: 14 }}>
+                This is the last lot. Press End Session below when the auction is finished.
+              </Text>
             )}
           </View>
         )}
@@ -785,6 +851,16 @@ const s = StyleSheet.create({
   bidBtn: { backgroundColor: Colors.primary, borderRadius: 14, paddingVertical: 12, alignItems: 'center', marginTop: 14 },
   bidBtnTxt: { color: Colors.navy, fontWeight: '700', fontSize: 15 },
   lotNav: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 14, paddingBottom: 14, gap: 10 },
+  navNext: { backgroundColor: '#E8742C' },
+  hostBidRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 6, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.08)' },
+  hostBidName: { color: 'rgba(255,255,255,0.85)', fontSize: 15, flex: 1 },
+  hostBidAmt: { color: 'rgba(255,255,255,0.85)', fontSize: 15, fontWeight: '700' },
+  hostActions: { paddingHorizontal: 14, paddingBottom: 12, gap: 10 },
+  hostResult: { color: '#fff', fontSize: 16, fontWeight: '800', textAlign: 'center', paddingVertical: 6 },
+  hostSold: { backgroundColor: '#16A34A', borderRadius: 12, paddingVertical: 14, alignItems: 'center' },
+  hostSoldTxt: { color: '#fff', fontSize: 16, fontWeight: '800' },
+  hostGhost: { borderWidth: 1, borderColor: 'rgba(255,255,255,0.25)', borderRadius: 12, paddingVertical: 12, alignItems: 'center' },
+  hostGhostTxt: { color: '#fff', fontSize: 14.5, fontWeight: '700' },
   navBtn: { flex: 1, backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: 10, paddingVertical: 10, alignItems: 'center' },
   navBtnTxt: { color: '#fff', fontWeight: '700', fontSize: 14 },
   micStatus: { color: 'rgba(255,255,255,0.4)', fontSize: 12, marginBottom: 14, textAlign: 'center' },

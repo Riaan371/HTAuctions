@@ -172,9 +172,9 @@ export function BidPanel({
       {closed ? (
         <View style={[s.box, sold ? s.boxGood : s.boxNeutral]}>
           <Text style={[s.boxTitle, { color: sold ? C.green : C.ink }]}>
-            {sold ? `SOLD for ${formatZAR(top?.amount ?? lot.current_bid ?? 0)}` : 'NO SALE'}
+            {sold ? `SOLD for ${formatZAR(lot.current_bid ?? top?.amount ?? 0)}` : noSale ? 'NO SALE' : 'SOLD IN THE ROOM'}
           </Text>
-          {sold && top && <Text style={s.boxSub}>Winning bidder: {bidderName(top)}</Text>}
+          {sold && <Text style={s.boxSub}>{iAmTop ? 'Congratulations, you won this lot!' : `Winning bidder: ${bidderName(top)}`}</Text>}
         </View>
       ) : iAmTop ? (
         // You already lead: no bid controls until someone outbids you.

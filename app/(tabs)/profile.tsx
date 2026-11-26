@@ -8,6 +8,8 @@ import { useThemeStore } from '../../lib/theme-store';
 import { supabase } from '../../lib/supabase';
 import { Colors, useAppTheme } from '../../lib/theme';
 import { TIMED_AUCTIONS_ENABLED } from '../../lib/features';
+import AdminEvents from '../../components/AdminEvents';
+import { C } from '../../components/LiveViewerParts';
 
 function storagePathFromUrl(url: string): string | null {
   const marker = '/lot-photos/';
@@ -618,18 +620,8 @@ export default function Profile() {
   const session = useAuthStore((s) => s.session);
   const profile = useAuthStore((s) => s.profile);
   const signOut = useAuthStore((s) => s.signOut);
-  const toggleTheme = useThemeStore((s) => s.toggle);
-  const { dark, bg, card, border, ink, muted } = useAppTheme();
-
-  const ThemeToggle = (
-    <View style={[s.card, { backgroundColor: card, borderColor: border }]}>
-      <View style={{ flex: 1 }}>
-        <Text style={[s.cardTitle, { color: ink }]}>Dark mode</Text>
-        <Text style={[s.cardSub, { color: muted }]}>Easier on the eyes at night</Text>
-      </View>
-      <Switch value={dark} onValueChange={toggleTheme} trackColor={{ true: Colors.gold, false: '#d1d5db' }} thumbColor="#fff" />
-    </View>
-  );
+  // Light "West Coast" look for every profile screen.
+  const bg = C.bg, card = '#FFFFFF', border = C.line, ink = C.ink, muted = C.sub;
 
   // —— GUEST VIEW ——
   if (!session || !profile) {
@@ -651,8 +643,6 @@ export default function Profile() {
               <Text style={{ color: Colors.gold, fontSize: 14, fontWeight: '600' }}>I already have an account</Text>
             </Pressable>
           </View>
-
-          <View style={{ width: '100%', marginTop: 20 }}>{ThemeToggle}</View>
         </View>
       </SafeAreaView>
     );
@@ -671,14 +661,9 @@ export default function Profile() {
           <Text style={s.bannerName}>{profile.full_name}</Text>
           <Text style={s.bannerEmail}>{profile.email}</Text>
         </View>
-        {profile.role !== 'bidder' && (
-          <Pressable onPress={() => router.push('/settings')} style={s.gearBtn}>
-            <Text style={{ fontSize: 22 }}>a"️</Text>
-          </Pressable>
-        )}
       </View>
 
-      <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
+      <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 60, width: '100%', maxWidth: 760, alignSelf: 'center' }}>
         {/* Role / KYC pills */}
         <View style={[s.card, { backgroundColor: card, borderColor: border, marginBottom: 12, flexDirection: 'row', gap: 8 }]}>
           <View style={[s.pill, { backgroundColor: `${roleColor}18` }]}>
@@ -699,14 +684,11 @@ export default function Profile() {
         {/* Change password — available to everyone */}
         <ChangePasswordEditor ink={ink} muted={muted} card={card} border={border} />
 
-        {/* Auctioneer actions — also available to super_admin */}
+        {/* Admin: live-auction-only mode shows the simple events panel; the old timed-auction panel returns with TIMED_AUCTIONS_ENABLED */}
         {(profile.role === 'auctioneer' || profile.role === 'super_admin') && (
-          <AuctioneerPanel userId={session.user.id} ink={ink} muted={muted} card={card} border={border} />
-        )}
-
-        {/* Dark mode — hidden for bidders, screen is restricted to name/password/logout */}
-        {profile.role !== 'bidder' && (
-          <View style={{ marginBottom: 12 }}>{ThemeToggle}</View>
+          TIMED_AUCTIONS_ENABLED
+            ? <AuctioneerPanel userId={session.user.id} ink={ink} muted={muted} card={card} border={border} />
+            : <View style={{ marginBottom: 16 }}><AdminEvents /></View>
         )}
 
         {/* Sign out */}
