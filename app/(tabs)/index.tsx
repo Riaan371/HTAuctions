@@ -9,6 +9,7 @@ import { useAppTheme, Colors } from '../../lib/theme';
 import { requestNotificationPermission, getNotificationPermission } from '../../lib/onesignal';
 import { shouldShowInstallPrompt, markInstallPromptShown } from '../../lib/install-prompt';
 import { TIMED_AUCTIONS_ENABLED } from '../../lib/features';
+import { C } from '../../components/LiveViewerParts';
 
 const { width: SW } = Dimensions.get('window');
 const CATEGORIES = ['Vehicles', 'Plant & Equipment', 'Livestock', 'Property', 'Industrial', 'Household', 'Electronics', 'Collectibles', 'Art & Jewellery'];
@@ -144,7 +145,7 @@ function countdownText(target: number, now: number): string {
 // Live-auction-only home screen: one big card with the next live auction's
 // date and time, or a "join now" card while it is on air.
 function NextLiveCard({ events, loadError }: { events: any[]; loadError?: boolean }) {
-  const { ink, muted } = useAppTheme();
+  const ink = C.ink, muted = C.sub;
   const [now, setNow] = useState(Date.now());
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 30000);
@@ -161,7 +162,7 @@ function NextLiveCard({ events, loadError }: { events: any[]; loadError?: boolea
   if (live) {
     return (
       <View style={s.nlWrap}>
-        <Pressable onPress={() => router.push(`/live/${live.auction_id}`)} style={[s.nlCard, { borderColor: '#DC2626' }]}>
+        <Pressable onPress={() => router.push(`/live/${live.auction_id}`)} style={[s.nlCard, { borderColor: '#DC2626', borderWidth: 2 }]}>
           <View style={s.nlLivePill}>
             <View style={s.liveDot} />
             <Text style={s.liveBadgeTxt}>LIVE NOW</Text>
@@ -380,7 +381,7 @@ export default function Home() {
   const [category, setCategory] = useState<string | null>(null);
 
   return (
-    <SafeAreaView style={[s.root, { backgroundColor: bg }]}>
+    <SafeAreaView style={[s.root, { backgroundColor: C.bg }]}>
       <ScrollView
         refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={Colors.gold} />}
         showsVerticalScrollIndicator={false}
@@ -400,7 +401,7 @@ export default function Home() {
 
         {profile && (
           <View style={[s.welcomeBar, { borderBottomColor: border }]}>
-            <Text style={[s.welcomeTxt, { color: muted }]}>Welcome back, <Text style={{ color: Colors.gold, fontWeight: '700' }}>{profile.full_name.split(' ')[0]}</Text></Text>
+            <Text style={[s.welcomeTxt, { color: C.sub }]}>Welcome back, <Text style={{ color: C.ink, fontWeight: '800' }}>{(((profile as any).screen_name || profile.full_name || profile.email?.split('@')[0] || '') as string).split(' ')[0]}</Text></Text>
           </View>
         )}
 
@@ -412,7 +413,7 @@ export default function Home() {
               <Text style={{ color: '#374151', fontSize: 14, lineHeight: 20, marginBottom: 20, textAlign: 'center' }}>
                 Get notified the moment a new auction opens or a live event starts — so you never lose out on a bid.
               </Text>
-              <Pressable onPress={handleEnableNotifications} style={{ backgroundColor: Colors.gold, borderRadius: 10, padding: 14, alignItems: 'center', width: '100%', marginBottom: 10 }}>
+              <Pressable onPress={handleEnableNotifications} style={{ backgroundColor: C.orange, borderRadius: 10, padding: 14, alignItems: 'center', width: '100%', marginBottom: 10 }}>
                 <Text style={{ color: Colors.navy, fontWeight: '800' }}>Enable Notifications</Text>
               </Pressable>
               <Pressable onPress={handleDismissNotifAsk} style={{ padding: 8 }}>
@@ -431,7 +432,7 @@ export default function Home() {
               <Text style={{ color: '#374151', fontSize: 14, lineHeight: 20, marginBottom: 20, textAlign: 'center' }}>
                 Get one-tap access from your home screen — faster loading, live auction alerts, no browser tabs to dig through.
               </Text>
-              <Pressable onPress={acceptInstallTakeover} style={{ backgroundColor: Colors.gold, borderRadius: 10, padding: 14, alignItems: 'center', width: '100%', marginBottom: 10 }}>
+              <Pressable onPress={acceptInstallTakeover} style={{ backgroundColor: C.orange, borderRadius: 10, padding: 14, alignItems: 'center', width: '100%', marginBottom: 10 }}>
                 <Text style={{ color: Colors.navy, fontWeight: '800' }}>Install Now</Text>
               </Pressable>
               <Pressable onPress={dismissInstallTakeover} style={{ padding: 8 }}>
@@ -535,14 +536,14 @@ const s = StyleSheet.create({
 
   // Header
   header: { backgroundColor: Colors.navy, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 14 },
-  logo: { width: 52, height: 52 },
-  headerTitle: { color: '#FFFFFF', fontSize: 18, fontWeight: '800', letterSpacing: 0.2 },
-  headerOnline: { color: Colors.gold, fontSize: 11, fontWeight: '700', letterSpacing: 0.6, marginTop: 1 },
-  headerSub: { color: 'rgba(255,255,255,0.55)', fontSize: 11, marginTop: 1 },
+  logo: { width: 60, height: 60 },
+  headerTitle: { color: '#FFFFFF', fontSize: 22, fontWeight: '800', letterSpacing: 0.2 },
+  headerOnline: { color: C.orange, fontSize: 13, fontWeight: '700', letterSpacing: 0.6, marginTop: 1 },
+  headerSub: { color: 'rgba(255,255,255,0.8)', fontSize: 13, marginTop: 1 },
   refreshBtn: { padding: 8, borderRadius: 8, backgroundColor: 'rgba(196,154,34,0.15)' },
 
-  welcomeBar: { paddingHorizontal: 16, paddingVertical: 10, borderBottomWidth: 1 },
-  welcomeTxt: { fontSize: 13 },
+  welcomeBar: { paddingHorizontal: 20, paddingVertical: 14, borderBottomWidth: 1 },
+  welcomeTxt: { fontSize: 17 },
 
   // Live banner
   liveBanner: { backgroundColor: Colors.navy, borderWidth: 1.5, borderColor: '#DC2626', borderRadius: 14, paddingHorizontal: 16, paddingVertical: 14, flexDirection: 'row', alignItems: 'center', gap: 12 },
@@ -594,19 +595,19 @@ const s = StyleSheet.create({
   eventBtnTxt: { color: Colors.navy, fontWeight: '800', fontSize: 14 },
 
   // Next live auction card (live-only mode)
-  nlWrap: { paddingHorizontal: 16, paddingTop: 20, paddingBottom: 8, alignItems: 'center' },
-  nlCard: { width: '100%', maxWidth: 560, backgroundColor: Colors.navy, borderRadius: 20, borderWidth: 1.5, borderColor: Colors.gold, padding: 28, alignItems: 'center' },
-  nlLabel: { color: Colors.gold, fontWeight: '800', fontSize: 12, letterSpacing: 1.4, marginBottom: 12 },
-  nlTime: { color: '#fff', fontWeight: '800', fontSize: 64, lineHeight: 70, letterSpacing: 1 },
-  nlDate: { color: '#fff', fontSize: 18, fontWeight: '600', marginTop: 4, textAlign: 'center' },
-  nlCountdown: { backgroundColor: 'rgba(217,164,65,0.16)', borderRadius: 99, paddingHorizontal: 14, paddingVertical: 6, marginTop: 16, marginBottom: 20 },
-  nlCountdownTxt: { color: Colors.gold, fontWeight: '700', fontSize: 13 },
-  nlTitle: { color: '#fff', fontWeight: '800', fontSize: 18, textAlign: 'center', marginBottom: 6 },
-  nlMeta: { color: 'rgba(255,255,255,0.6)', fontSize: 13, marginBottom: 12 },
-  nlBody: { color: 'rgba(255,255,255,0.7)', fontSize: 14, lineHeight: 21, textAlign: 'center', marginTop: 6 },
-  nlLivePill: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#DC2626', borderRadius: 20, paddingHorizontal: 12, paddingVertical: 5, marginBottom: 16 },
-  nlBtn: { backgroundColor: Colors.gold, borderRadius: 10, paddingVertical: 14, paddingHorizontal: 28, marginTop: 20 },
-  nlBtnTxt: { color: Colors.navy, fontWeight: '800', fontSize: 15 },
+  nlWrap: { paddingHorizontal: 16, paddingTop: 24, paddingBottom: 8, alignItems: 'center' },
+  nlCard: { width: '100%', maxWidth: 640, backgroundColor: '#FFFFFF', borderRadius: 24, borderWidth: 1, borderColor: C.line, padding: 32, alignItems: 'center' },
+  nlLabel: { color: C.orangeDark, fontWeight: '800', fontSize: 14, letterSpacing: 1.6, marginBottom: 12 },
+  nlTime: { color: C.ink, fontWeight: '900', fontSize: 76, lineHeight: 82, letterSpacing: -1 },
+  nlDate: { color: C.ink, fontSize: 22, fontWeight: '700', marginTop: 6, textAlign: 'center' },
+  nlCountdown: { backgroundColor: C.orangeSoft, borderRadius: 99, paddingHorizontal: 18, paddingVertical: 8, marginTop: 18, marginBottom: 22 },
+  nlCountdownTxt: { color: C.orangeDark, fontWeight: '800', fontSize: 16 },
+  nlTitle: { color: C.ink, fontWeight: '900', fontSize: 24, textAlign: 'center', marginBottom: 6 },
+  nlMeta: { color: C.sub, fontSize: 16, marginBottom: 12 },
+  nlBody: { color: C.sub, fontSize: 16.5, lineHeight: 25, textAlign: 'center', marginTop: 6, maxWidth: 480 },
+  nlLivePill: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#DC2626', borderRadius: 20, paddingHorizontal: 14, paddingVertical: 6, marginBottom: 16 },
+  nlBtn: { backgroundColor: C.orange, borderRadius: 16, minHeight: 60, paddingHorizontal: 36, alignItems: 'center', justifyContent: 'center', marginTop: 22 },
+  nlBtnTxt: { color: C.ink, fontWeight: '900', fontSize: 19 },
 
   // Empty state
   emptyEvents: { alignItems: 'center', paddingVertical: 48, paddingHorizontal: 32 },
