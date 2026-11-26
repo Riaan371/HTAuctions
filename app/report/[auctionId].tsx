@@ -4,10 +4,12 @@ import { View, Text, Pressable, ScrollView, ActivityIndicator, StyleSheet, Platf
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
+import { useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import { C } from '../../components/LiveViewerParts';
 import { formatZAR } from '../../components/LotCard';
 import { whenText } from '../../lib/admin-utils';
+import { downloadAuctionXlsx } from '../../lib/report-xlsx';
 
 type Who = { full_name?: string | null; screen_name?: string | null; email?: string | null; phone?: string | null } | null;
 type Bid = { id: string; amount: number; created_at: string; lot_id: string; bidder_id: string; users: Who };
@@ -15,11 +17,6 @@ type Lot = { id: string; title: string; starting_bid: number; reserve: number | 
 
 const nameOf = (u: Who) => u?.full_name || u?.screen_name || 'Unknown bidder';
 const clock = (iso: string) => new Date(iso).toLocaleString('en-ZA', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
-
-function csvCell(v: unknown) {
-  const t = v == null ? '' : String(v);
-  return /[",\n]/.test(t) ? `"${t.replace(/"/g, '""')}"` : t;
-}
 
 export default function Report() {
   const { auctionId } = useLocalSearchParams<{ auctionId: string }>();
@@ -67,20 +64,41 @@ export default function Report() {
     return acc;
   }, {}));
 
-  function downloadCsv() {
-    const out: string[][] = [
-      ['Auction', ev?.title ?? ''], ['When', whenText(ev?.scheduled_at)], [],
-      ['LOTS'], ['Lot', 'Description', 'Opening bid', 'Reserve', 'Online bids', 'Highest online bid', 'Result', 'Sold price', 'Buyer name', 'Buyer cell', 'Buyer email'],
-      ...rows.map((r) => [String(r.no), r.lot.title, String(r.lot.starting_bid), String(r.lot.reserve ?? ''), String(r.bidCount), String(r.top?.amount ?? ''), r.result, String(r.price ?? ''), r.winner ? nameOf(r.winner) : '', r.winner?.phone ?? '', r.winner?.email ?? '']),
-      [], ['ONLINE BID LOG'], ['Time', 'Lot', 'Bidder', 'Cell', 'Email', 'Amount'],
-      ...bids.map((b) => [clock(b.created_at), String((lots.findIndex((l) => l.id === b.lot_id)) + 1), nameOf(b.users), b.users?.phone ?? '', b.users?.email ?? '', String(b.amount)]),
-    ];
-    const csv = out.map((r) => r.map(csvCell).join(',')).join('\r\n');
-    const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = `auction-report-${(ev?.title ?? 'auction').replace(/[^a-z0-9]+/gi, '-').toLowerCase()}.csv`;
-    document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+  const [exporting, setExporting] = useState(false);
+  async function downloadExcel() {
+    setExporting(true);
+    try {
+      await downloadAuctionXlsx({
+        title: ev?.title ?? 'Auction',
+        when: whenText(ev?.scheduled_at),
+        status: ev?.status === 'ended' ? 'Ended' : ev?.status === 'live' ? 'Live now (report so far)' : 'Not started',
+        stats: {
+          lots: lots.length, soldOnline: soldOnline.length, onlineTotal: total,
+          soldRoom: rows.filter((r) => r.result === 'Sold in the room').length,
+          noSale: rows.filter((r) => r.result === 'No sale').length,
+          notClosed: rows.filter((r) => r.result === 'Not closed').length,
+          bidders: bidders.size, bids: bids.length,
+        },
+        lots: rows.map((r) => ({
+          no: r.no, title: r.lot.title, opening: r.lot.starting_bid, reserve: r.lot.reserve, bidCount: r.bidCount,
+          top: r.top?.amount ?? null, topName: r.top ? nameOf(r.top.users) : '', result: r.result, price: r.price,
+          buyer: r.winner ? nameOf(r.winner) : '', cell: r.winner?.phone ?? '', email: r.winner?.email ?? '',
+        })),
+        buyers: buyers.map((b) => ({
+          name: nameOf(b.who), cell: b.who?.phone ?? '', email: b.who?.email ?? '',
+          lots: b.lots.map((r) => `Lot ${r.no}: ${r.lot.title} (${formatZAR(r.price)})`).join('; '),
+          count: b.lots.length, total: b.total,
+        })),
+        bids: bids.map((b) => ({
+          time: clock(b.created_at), lot: lots.findIndex((l) => l.id === b.lot_id) + 1,
+          lotTitle: lots.find((l) => l.id === b.lot_id)?.title ?? '', bidder: nameOf(b.users), cell: b.users?.phone ?? '', amount: b.amount,
+        })),
+      });
+    } catch (e: any) {
+      window.alert('Could not create the Excel file: ' + (e?.message ?? e));
+    } finally {
+      setExporting(false);
+    }
   }
 
   const resultColor = (r: string) => (r === 'Sold online' ? C.green : r === 'Not closed' ? C.orangeDark : C.sub);
@@ -102,7 +120,7 @@ export default function Report() {
 
         {Platform.OS === 'web' && (
           <View style={s.actions}>
-            <Pressable onPress={downloadCsv} style={[s.btn, { backgroundColor: C.ink }]}><Text style={s.btnTxt}>Download spreadsheet (CSV)</Text></Pressable>
+            <Pressable onPress={downloadExcel} disabled={exporting} style={[s.btn, { backgroundColor: C.ink, opacity: exporting ? 0.6 : 1 }]}><Text style={s.btnTxt}>{exporting ? 'Preparing Excel…' : 'Download Excel report (.xlsx)'}</Text></Pressable>
             <Pressable onPress={() => window.print()} style={[s.btn, { backgroundColor: '#fff', borderWidth: 1.5, borderColor: C.ink }]}><Text style={[s.btnTxt, { color: C.ink }]}>Print or save as PDF</Text></Pressable>
           </View>
         )}
