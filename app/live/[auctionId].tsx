@@ -195,6 +195,16 @@ export default function LiveRoom() {
   const { data: liveBids } = useQuery({
     queryKey: ['live-bids', bidLotId],
     queryFn: async () => {
+      // Preferred: a database function that returns each bid with a safe display name
+      // (screen name, or first name + initial). Other bidders' contact details stay private.
+      const { data: safe, error: rpcErr } = await supabase.rpc('lot_bids', { p_lot: bidLotId });
+      if (!rpcErr && Array.isArray(safe)) {
+        return safe.map((r: any) => ({
+          id: r.id, amount: Number(r.amount), created_at: r.created_at, bidder_id: r.bidder_id,
+          users: { screen_name: r.display_name },
+        })) as LiveBid[];
+      }
+      // Fallback while the function is not installed yet: staff see names, bidders see only their own.
       const { data } = await supabase
         .from('bids')
         .select('id, amount, created_at, bidder_id, users(full_name, screen_name)')
