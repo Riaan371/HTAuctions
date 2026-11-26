@@ -8,6 +8,7 @@ import { useAuthStore } from '../../lib/auth-store';
 import { Colors } from '../../lib/theme';
 import { getAgoraToken, markSessionLive, markSessionEnded, HOST_UID } from '../../lib/agora';
 import { formatZAR } from '../../components/LotCard';
+import { confirmAsync } from '../../lib/admin-utils';
 import { C, PhotoViewer, LotGallery, BidPanel, BidHistory, LotsList, LotGrid, type LiveLot, type LiveBid } from '../../components/LiveViewerParts';
 
 const APP_ID = process.env.EXPO_PUBLIC_AGORA_APP_ID ?? '';
@@ -432,7 +433,8 @@ export default function LiveRoom() {
             .from('lots')
             .update({ closed: true, no_sale: true })
             .in('id', liveSession.lot_ids)
-            .is('winner_id', null); // only lots not already sold
+            .is('winner_id', null) // only lots not already sold online
+            .or('closed.is.null,closed.eq.false'); // and not already given a result (e.g. sold in the room)
         }
         await markSessionEnded(auctionId);
       } catch (e: any) {
@@ -444,7 +446,7 @@ export default function LiveRoom() {
       queryClient.invalidateQueries({ queryKey: ['my-sessions'] });
       queryClient.invalidateQueries({ queryKey: ['live-session-status', auctionId] });
       setStatus('ended');
-      router.replace('/(tabs)/');
+      router.replace(`/report/${auctionId}`);
     } else {
       setStatus('ended');
       router.back();
@@ -495,6 +497,101 @@ export default function LiveRoom() {
       ? 'Waiting for the auctioneer’s video...'
       : 'The auctioneer’s video appears here once you join.';
 
+  // Auctioneer-side pieces: the lot console and the running order of all lots.
+  async function goToLot(l: LiveLot) {
+    const idx = (lotIds ?? []).indexOf(l.id);
+    if (idx < 0) { setViewLot(l); return; }
+    setLotIndex(idx);
+    await supabase.from('live_sessions').update({ current_lot_index: idx }).eq('auction_id', auctionId).eq('status', 'live');
+  }
+
+  async function endAuction() {
+    const ok = await confirmAsync(
+      'End the auction?',
+      'Clients are disconnected and the report becomes available. Lots with no result yet are marked as no sale.',
+      'End auction',
+    );
+    if (ok) leave();
+  }
+
+  const bidName = (b: LiveBid) => b.users?.screen_name ?? b.users?.full_name ?? 'Bidder';
+  const hostConsoleEl = currentLot ? (
+    <View style={s.hCard}>
+      <Text style={s.hKicker}>LOT {lotIndex + 1} OF {Math.max(totalLots, 1)} · ON THE BLOCK</Text>
+      <Text style={s.hTitle}>{currentLot.title}</Text>
+
+      {(currentLot.photos?.length ?? 0) > 0 && (
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, marginTop: 12 }}>
+          {currentLot.photos!.map((p, i) => (
+            <Image key={i} source={{ uri: p }} style={{ width: 92, height: 70, borderRadius: 10, backgroundColor: '#EEF3F2' }} resizeMode="cover" />
+          ))}
+        </ScrollView>
+      )}
+
+      <Text style={[s.hKicker, { marginTop: 18 }]}>{liveBids?.length ? 'HIGHEST ONLINE BID' : 'OPENING BID'}</Text>
+      <Text style={s.hPrice}>{formatZAR(liveBids?.[0]?.amount ?? currentLot.starting_bid)}</Text>
+      <Text style={s.hSub}>
+        {liveBids?.length ? `${liveBids.length} online bid${liveBids.length === 1 ? '' : 's'}` : 'No online bids yet'}
+      </Text>
+
+      {(liveBids ?? []).slice(0, 5).map((b, i) => (
+        <View key={b.id} style={s.hBidRow}>
+          <Text style={[s.hBidName, i === 0 && { color: C.orangeDark }]} numberOfLines={1}>{bidName(b)}</Text>
+          <Text style={[s.hBidAmt, i === 0 && { color: C.orangeDark }]}>{formatZAR(b.amount)}</Text>
+        </View>
+      ))}
+
+      {status === 'live' && (
+        <View style={{ marginTop: 16, gap: 10 }}>
+          {lotClosed ? (
+            <>
+              <View style={[s.hResultBox, currentLot.winner_id ? { backgroundColor: C.greenBg } : { backgroundColor: '#EEF3F2' }]}>
+                <Text style={[s.hResult, currentLot.winner_id && { color: C.green }]}>
+                  {currentLot.winner_id
+                    ? `SOLD online to ${liveBids?.find((b) => b.bidder_id === currentLot.winner_id) ? bidName(liveBids.find((b) => b.bidder_id === currentLot.winner_id)!) : 'bidder'} for ${formatZAR(currentLot.current_bid)}`
+                    : currentLot.no_sale ? 'NO SALE' : 'SOLD IN THE ROOM'}
+                </Text>
+              </View>
+              <Pressable onPress={reopenLot} style={s.hGhost}><Text style={s.hGhostTxt}>Reopen this lot</Text></Pressable>
+            </>
+          ) : (
+            <>
+              <Pressable onPress={() => closeLot('online')} disabled={!liveBids?.length} style={[s.hSold, !liveBids?.length && { opacity: 0.35 }]}>
+                <Text style={s.hSoldTxt}>
+                  {liveBids?.length ? `Sold online: ${bidName(liveBids[0])} · ${formatZAR(liveBids[0].amount)}` : 'Sold online (no online bids)'}
+                </Text>
+              </Pressable>
+              <View style={{ flexDirection: 'row', gap: 10 }}>
+                <Pressable onPress={() => closeLot('room')} style={[s.hGhost, { flex: 1 }]}><Text style={s.hGhostTxt}>Sold in the room</Text></Pressable>
+                <Pressable onPress={() => closeLot('nosale')} style={[s.hGhost, { flex: 1 }]}><Text style={s.hGhostTxt}>No sale</Text></Pressable>
+              </View>
+            </>
+          )}
+
+          <View style={{ flexDirection: 'row', gap: 10, marginTop: 4 }}>
+            <Pressable onPress={prevLot} disabled={lotIndex === 0} style={[s.hGhost, { flex: 1 }, lotIndex === 0 && { opacity: 0.3 }]}>
+              <Text style={s.hGhostTxt}>← Previous lot</Text>
+            </Pressable>
+            <Pressable onPress={nextLot} disabled={lotIndex >= totalLots - 1} style={[s.hNext, { flex: 1 }, lotIndex >= totalLots - 1 && { opacity: 0.3 }]}>
+              <Text style={s.hNextTxt}>Next lot →</Text>
+            </Pressable>
+          </View>
+          <Text style={s.hSub}>
+            {totalLots > 0 && lotIndex >= totalLots - 1
+              ? 'This is the last lot. Press End auction when you are finished.'
+              : 'Clients’ photos and price switch to the next lot straight away. You can also tap any lot in the list below to bring it up.'}
+          </Text>
+        </View>
+      )}
+    </View>
+  ) : status === 'live' ? (
+    <View style={s.hCard}>
+      <Text style={s.hTitle}>No lots in this auction</Text>
+      <Text style={s.hSub}>Add lots from Profile → Lots and details.</Text>
+    </View>
+  ) : null;
+  const hostLotsEl = <LotsList lots={allLots ?? []} activeLotId={status === 'live' ? currentLot?.id ?? null : null} onOpen={status === 'live' ? goToLot : setViewLot} />;
+
   function goFullscreen() {
     const el: any = typeof document !== 'undefined' ? document.getElementById(VIDEO_ID)?.parentElement : null;
     try { (el?.requestFullscreen ?? el?.webkitRequestFullscreen)?.call(el); } catch {}
@@ -535,8 +632,8 @@ export default function LiveRoom() {
   ) : null;
 
   return (
-    <SafeAreaView style={[s.root, { backgroundColor: isHost ? '#000' : C.bg }]}>
-      <Stack.Screen options={{ headerShown: true, headerTitle: 'Live Auction', headerStyle: { backgroundColor: isHost ? '#000' : C.ink }, headerTintColor: '#fff', headerLeft: () => (
+    <SafeAreaView style={[s.root, { backgroundColor: C.bg }]}>
+      <Stack.Screen options={{ headerShown: true, headerTitle: 'Live Auction', headerStyle: { backgroundColor: C.ink }, headerTintColor: '#fff', headerLeft: () => (
         <Pressable onPress={() => router.push('/(tabs)/')} style={{ paddingHorizontal: 8, paddingVertical: 4 }}>
           <Text style={{ color: '#fff', fontSize: 15 }}>🏠 Home</Text>
         </Pressable>
@@ -653,171 +750,99 @@ export default function LiveRoom() {
           <PhotoViewer key={viewLot?.id ?? 'none'} lot={viewLot} onClose={() => setViewLot(null)} />
         </ScrollView>
       ) : (
-      <ScrollView style={s.body} contentContainerStyle={s.bodyContent}>
-        {/* Live indicator */}
-        <View style={s.liveRow}>
-          {status === 'live' ? (
-            <>
-              <View style={s.liveDot} />
-              <Text style={s.liveTxt}>LIVE</Text>
-            </>
-          ) : (
-            <Text style={{ color: 'rgba(255,255,255,0.5)', fontSize: 14 }}>
-              {isHost ? 'Start your live auction session' : 'Join the live auction'}
-            </Text>
-          )}
-        </View>
-
-        {/* Live video. The first View stays childless: Agora injects the <video> into it. */}
-        <View style={s.videoWrap}>
-          <View id={VIDEO_ID} style={s.video} />
-          {!hasVideo && (
-            <View style={s.videoPlaceholder}>
-              <Text style={s.videoPlaceholderTxt}>{placeholderText}</Text>
-            </View>
-          )}
-        </View>
-
-        {/* Host: camera and microphone setup before going live */}
-        {isHost && status === 'idle' && (
-          <View style={s.setupBox}>
-            <Pressable onPress={setupDevices} style={s.outlineBtn}>
-              <Text style={s.outlineBtnTxt}>{cameras.length || mics.length ? 'Refresh camera and microphone list' : 'Set up camera and microphone'}</Text>
-            </Pressable>
-            {cameras.length > 0 && <DevicePicker label="CAMERA" devices={cameras} value={cameraId} onPick={pickCamera} />}
-            {mics.length > 0 && <DevicePicker label="MICROPHONE" devices={mics} value={micId} onPick={pickMic} />}
-          </View>
-        )}
-
-        {/* Current lot */}
-        {currentLot && (
-          <View style={s.lotCard}>
-            <View style={{ padding: 16 }}>
-              <Text style={s.lotCounter}>LOT {lotIndex + 1} OF {Math.max(totalLots, 1)}</Text>
-              <Text style={s.lotLabel}>NOW ON THE BLOCK</Text>
-              <Text style={s.lotTitle}>{currentLot.title}</Text>
-
-              {(currentLot.photos?.length ?? 0) > 0 && (
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, marginTop: 12 }}>
-                  {currentLot.photos!.map((p, i) => (
-                    <Image key={i} source={{ uri: p }} style={{ width: 84, height: 64, borderRadius: 8, backgroundColor: '#222' }} resizeMode="cover" />
-                  ))}
-                </ScrollView>
+      <ScrollView style={s.bodyFull} contentContainerStyle={[s.bodyContent, { maxWidth: 1600, width: '100%', alignSelf: 'center' }]}>
+        <View style={wide ? s.wideRow : undefined}>
+          <View style={wide ? s.colMain : undefined}>
+            <View style={s.liveRow}>
+              {status === 'live' ? (
+                <>
+                  <View style={s.liveDot} />
+                  <Text style={[s.liveTxt, { color: '#C8261F', fontSize: 15 }]}>ON AIR</Text>
+                  <Text style={s.liveTitle} numberOfLines={1}>{sessionInfo?.title ?? ''}</Text>
+                </>
+              ) : (
+                <Text style={s.liveTitle} numberOfLines={1}>{sessionInfo?.title ?? 'Live auction'} · not on air yet</Text>
               )}
+            </View>
 
-              <Text style={s.lotBid}>{formatZAR(liveBids?.[0]?.amount ?? currentLot.starting_bid)}</Text>
-              <Text style={{ color: 'rgba(255,255,255,0.55)', fontSize: 13 }}>
-                {liveBids?.length ? `Highest online bid · ${liveBids.length} online bid${liveBids.length === 1 ? '' : 's'}` : 'Opening bid · no online bids yet'}
-              </Text>
-
-              {(liveBids ?? []).slice(0, 5).map((b, i) => (
-                <View key={b.id} style={s.hostBidRow}>
-                  <Text style={[s.hostBidName, i === 0 && { color: '#fbbf24' }]} numberOfLines={1}>{b.users?.screen_name ?? b.users?.full_name ?? 'Bidder'}</Text>
-                  <Text style={[s.hostBidAmt, i === 0 && { color: '#fbbf24' }]}>{formatZAR(b.amount)}</Text>
+            {/* Live video. The first View stays childless: Agora injects the <video> into it. */}
+            <View style={[s.videoWrap, !wide && s.videoWrapFull]}>
+              <View id={VIDEO_ID} style={s.video} />
+              {!hasVideo && (
+                <View style={s.videoPlaceholder}>
+                  <Text style={s.videoPlaceholderTxt}>{placeholderText}</Text>
                 </View>
-              ))}
-            </View>
-
-            {status === 'live' && (
-              <View style={s.hostActions}>
-                {lotClosed ? (
-                  <>
-                    <Text style={s.hostResult}>
-                      {currentLot.winner_id
-                        ? `SOLD online to ${liveBids?.find((b) => b.bidder_id === currentLot.winner_id)?.users?.screen_name ?? 'bidder'} for ${formatZAR(currentLot.current_bid)}`
-                        : currentLot.no_sale ? 'NO SALE' : 'SOLD IN THE ROOM'}
-                    </Text>
-                    <Pressable onPress={reopenLot} style={s.hostGhost}><Text style={s.hostGhostTxt}>Reopen this lot</Text></Pressable>
-                  </>
-                ) : (
-                  <>
-                    <Pressable onPress={() => closeLot('online')} disabled={!liveBids?.length} style={[s.hostSold, !liveBids?.length && { opacity: 0.35 }]}>
-                      <Text style={s.hostSoldTxt}>
-                        {liveBids?.length ? `Sold online: ${liveBids[0].users?.screen_name ?? liveBids[0].users?.full_name ?? 'bidder'} · ${formatZAR(liveBids[0].amount)}` : 'Sold online (no online bids)'}
-                      </Text>
-                    </Pressable>
-                    <View style={{ flexDirection: 'row', gap: 10 }}>
-                      <Pressable onPress={() => closeLot('room')} style={[s.hostGhost, { flex: 1 }]}><Text style={s.hostGhostTxt}>Sold in the room</Text></Pressable>
-                      <Pressable onPress={() => closeLot('nosale')} style={[s.hostGhost, { flex: 1 }]}><Text style={s.hostGhostTxt}>No sale</Text></Pressable>
-                    </View>
-                  </>
-                )}
-              </View>
-            )}
-
-            {status === 'live' && (
-              <View style={s.lotNav}>
-                <Pressable onPress={prevLot} disabled={lotIndex === 0} style={[s.navBtn, { opacity: lotIndex === 0 ? 0.3 : 1 }]}>
-                  <Text style={s.navBtnTxt}>← Previous lot</Text>
-                </Pressable>
-                <Pressable onPress={nextLot} disabled={lotIndex >= totalLots - 1} style={[s.navBtn, s.navNext, { opacity: lotIndex >= totalLots - 1 ? 0.3 : 1 }]}>
-                  <Text style={[s.navBtnTxt, { color: '#17293D' }]}>Next lot →</Text>
-                </Pressable>
-              </View>
-            )}
-            {status === 'live' && totalLots > 0 && lotIndex >= totalLots - 1 && (
-              <Text style={{ color: 'rgba(255,255,255,0.55)', fontSize: 13, textAlign: 'center', paddingBottom: 14 }}>
-                This is the last lot. Press End Session below when the auction is finished.
-              </Text>
-            )}
-          </View>
-        )}
-
-        {status === 'live' && (
-          <Text style={s.micStatus}>
-            {isHost
-              ? `${micOn ? 'Microphone on' : 'Microphone muted'} · ${camTrackRef.current ? (camOn ? 'Camera on' : 'Camera off') : 'No camera (audio only)'}`
-              : 'Watching and listening live'}
-          </Text>
-        )}
-
-        {/* Error */}
-        {error && (
-          <View style={s.errorBox}>
-            <Text style={s.errorTxt}>{error}</Text>
-          </View>
-        )}
-
-        {/* Controls */}
-        <View style={{ gap: 12 }}>
-          {status === 'idle' && (
-            <Pressable onPress={join} style={s.actionBtn}>
-              <Text style={s.actionBtnTxt}>{isHost ? 'Start Live Session' : 'Join Live Video'}</Text>
-            </Pressable>
-          )}
-          {status === 'joining' && (
-            <View style={s.joiningBox}>
-              <ActivityIndicator color={Colors.primary} />
-              <Text style={{ color: Colors.primary, fontSize: 13, marginTop: 8 }}>Connecting...</Text>
-            </View>
-          )}
-          {status === 'live' && isHost && (
-            <>
-              <Pressable onPress={toggleMic} style={[s.outlineBtn, !micOn && { borderColor: '#ef4444', backgroundColor: 'rgba(239,68,68,0.1)' }]}>
-                <Text style={s.outlineBtnTxt}>{micOn ? '🎙 Mute Mic' : '🔇 Unmute Mic'}</Text>
-              </Pressable>
-              {camTrackRef.current && (
-                <Pressable onPress={toggleCam} style={[s.outlineBtn, !camOn && { borderColor: '#ef4444', backgroundColor: 'rgba(239,68,68,0.1)' }]}>
-                  <Text style={s.outlineBtnTxt}>{camOn ? 'Turn Camera Off' : 'Turn Camera On'}</Text>
-                </Pressable>
               )}
-              <Pressable onPress={leave} style={[s.outlineBtn, { borderColor: '#ef4444' }]}>
-                <Text style={[s.outlineBtnTxt, { color: '#ef4444' }]}>End Session</Text>
-              </Pressable>
-            </>
-          )}
-          {status === 'live' && !isHost && (
-            <Pressable onPress={leave} style={s.outlineBtn}>
-              <Text style={s.outlineBtnTxt}>Leave</Text>
-            </Pressable>
+            </View>
+
+            {error && (
+              <View style={[s.errorBox, { backgroundColor: C.redBg, borderColor: '#F2B8B5' }]}>
+                <Text style={[s.errorTxt, { color: C.red, fontSize: 15 }]}>{error}</Text>
+              </View>
+            )}
+
+            {status === 'idle' && (
+              <View style={s.hPanel}>
+                <Text style={s.hStep}>STEP 1</Text>
+                <Text style={s.hH}>Choose your camera and microphone</Text>
+                <Pressable onPress={setupDevices} style={s.hOutline}>
+                  <Text style={s.hOutlineTxt}>{cameras.length || mics.length ? 'Refresh the list' : 'Turn on camera and microphone'}</Text>
+                </Pressable>
+                {cameras.length > 0 && <DevicePicker label="CAMERA" devices={cameras} value={cameraId} onPick={pickCamera} />}
+                {mics.length > 0 && <DevicePicker label="MICROPHONE" devices={mics} value={micId} onPick={pickMic} />}
+
+                <Text style={[s.hStep, { marginTop: 26 }]}>STEP 2</Text>
+                <Text style={s.hH}>Go on air</Text>
+                <Text style={s.hP}>Clients see the auction go live the moment you press the button. Wear headphones so the microphone does not pick up the speakers.</Text>
+                <Pressable onPress={join} style={s.hStart}>
+                  <Text style={s.hStartTxt}>Start live session</Text>
+                </Pressable>
+                <Pressable onPress={() => router.replace('/(tabs)/profile')} style={[s.hOutline, { marginTop: 12 }]}>
+                  <Text style={s.hOutlineTxt}>← Back to profile</Text>
+                </Pressable>
+              </View>
+            )}
+
+            {status === 'joining' && (
+              <View style={s.hPanel}>
+                <ActivityIndicator color={C.orange} />
+                <Text style={[s.hP, { textAlign: 'center', marginTop: 8 }]}>Going on air…</Text>
+              </View>
+            )}
+
+            {status === 'live' && (
+              <View style={s.hPanel}>
+                <Text style={s.hP}>
+                  {`${micOn ? 'Microphone on' : 'Microphone muted'} · ${camTrackRef.current ? (camOn ? 'Camera on' : 'Camera off') : 'No camera (audio only)'}`}
+                </Text>
+                <View style={{ flexDirection: 'row', gap: 10, flexWrap: 'wrap', marginTop: 10 }}>
+                  <Pressable onPress={toggleMic} style={[s.hCtl, !micOn && s.hCtlOff]}>
+                    <Text style={[s.hCtlTxt, !micOn && { color: C.red }]}>{micOn ? 'Mute microphone' : 'Unmute microphone'}</Text>
+                  </Pressable>
+                  {camTrackRef.current && (
+                    <Pressable onPress={toggleCam} style={[s.hCtl, !camOn && s.hCtlOff]}>
+                      <Text style={[s.hCtlTxt, !camOn && { color: C.red }]}>{camOn ? 'Turn camera off' : 'Turn camera on'}</Text>
+                    </Pressable>
+                  )}
+                  <Pressable onPress={endAuction} style={s.hEnd}>
+                    <Text style={s.hEndTxt}>End auction</Text>
+                  </Pressable>
+                </View>
+              </View>
+            )}
+
+            {!wide && hostConsoleEl}
+            {!wide && hostLotsEl}
+          </View>
+
+          {wide && (
+            <View style={s.colSide}>
+              {hostConsoleEl}
+              {hostLotsEl}
+            </View>
           )}
         </View>
-
-        {isHost && status === 'idle' && (
-          <Pressable onPress={leave} style={[s.outlineBtn, { borderColor: '#ef4444', marginTop: 12 }]}>
-            <Text style={[s.outlineBtnTxt, { color: '#ef4444' }]}>End Session</Text>
-          </Pressable>
-        )}
+        <PhotoViewer key={viewLot?.id ?? 'none'} lot={viewLot} onClose={() => setViewLot(null)} />
       </ScrollView>
       )}
     </SafeAreaView>
@@ -837,12 +862,12 @@ const s = StyleSheet.create({
   videoPlaceholder: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center', padding: 20, pointerEvents: 'none' },
   videoPlaceholderTxt: { color: 'rgba(255,255,255,0.55)', fontSize: 14, textAlign: 'center', lineHeight: 20 },
   setupBox: { marginBottom: 18 },
-  pickerLabel: { color: 'rgba(255,255,255,0.45)', fontSize: 11, fontWeight: '700', letterSpacing: 1.2, marginBottom: 6 },
+  pickerLabel: { color: C.sub, fontSize: 12.5, fontWeight: '800', letterSpacing: 1.2, marginBottom: 6 },
   chipWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  chip: { borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)', borderRadius: 99, paddingHorizontal: 12, paddingVertical: 7, maxWidth: '100%' },
-  chipOn: { backgroundColor: Colors.primary, borderColor: Colors.primary },
-  chipTxt: { color: 'rgba(255,255,255,0.8)', fontSize: 12.5, fontWeight: '600' },
-  chipTxtOn: { color: Colors.navy },
+  chip: { borderWidth: 1.5, borderColor: C.line, backgroundColor: '#fff', borderRadius: 99, paddingHorizontal: 14, paddingVertical: 9, maxWidth: '100%' },
+  chipOn: { backgroundColor: C.orange, borderColor: C.orange },
+  chipTxt: { color: C.ink, fontSize: 14, fontWeight: '600' },
+  chipTxtOn: { color: C.ink, fontWeight: '800' },
   lotCard: { backgroundColor: 'rgba(255,255,255,0.07)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)', borderRadius: 20, overflow: 'hidden', marginBottom: 20 },
   lotCounter: { color: 'rgba(255,255,255,0.4)', fontSize: 10, fontWeight: '700', letterSpacing: 1.5, marginBottom: 2 },
   lotLabel: { color: 'rgba(255,255,255,0.4)', fontSize: 10, fontWeight: '700', letterSpacing: 1.5, marginBottom: 4 },
@@ -852,6 +877,35 @@ const s = StyleSheet.create({
   bidBtnTxt: { color: Colors.navy, fontWeight: '700', fontSize: 15 },
   lotNav: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 14, paddingBottom: 14, gap: 10 },
   navNext: { backgroundColor: '#E8742C' },
+  hPanel: { backgroundColor: '#fff', borderWidth: 1, borderColor: C.line, borderRadius: 20, padding: 20, marginBottom: 16 },
+  hStep: { color: C.orangeDark, fontSize: 12.5, fontWeight: '800', letterSpacing: 1.4 },
+  hH: { color: C.ink, fontSize: 21, fontWeight: '800', marginTop: 2, marginBottom: 12 },
+  hP: { color: C.sub, fontSize: 15.5, lineHeight: 23 },
+  hOutline: { borderWidth: 1.5, borderColor: C.ink, borderRadius: 14, minHeight: 52, alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff' },
+  hOutlineTxt: { color: C.ink, fontSize: 16, fontWeight: '800' },
+  hStart: { backgroundColor: C.orange, borderRadius: 16, minHeight: 66, alignItems: 'center', justifyContent: 'center', marginTop: 14 },
+  hStartTxt: { color: C.ink, fontSize: 22, fontWeight: '900' },
+  hCtl: { borderWidth: 1.5, borderColor: C.ink, borderRadius: 12, minHeight: 48, paddingHorizontal: 16, alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff' },
+  hCtlOff: { borderColor: C.red, backgroundColor: C.redBg },
+  hCtlTxt: { color: C.ink, fontSize: 15, fontWeight: '800' },
+  hEnd: { borderWidth: 1.5, borderColor: C.red, borderRadius: 12, minHeight: 48, paddingHorizontal: 16, alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff' },
+  hEndTxt: { color: C.red, fontSize: 15, fontWeight: '800' },
+  hCard: { backgroundColor: '#fff', borderWidth: 1, borderColor: C.line, borderRadius: 20, padding: 18, marginBottom: 16 },
+  hKicker: { color: C.sub, fontSize: 12.5, fontWeight: '800', letterSpacing: 1.2 },
+  hTitle: { color: C.ink, fontSize: 24, fontWeight: '800', marginTop: 4, lineHeight: 30 },
+  hPrice: { color: C.ink, fontSize: 48, fontWeight: '900', lineHeight: 54, letterSpacing: -1, marginTop: 2 },
+  hSub: { color: C.sub, fontSize: 14.5, lineHeight: 21, marginTop: 4 },
+  hBidRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 9, borderTopWidth: 1, borderTopColor: C.line, marginTop: 2 },
+  hBidName: { color: C.ink, fontSize: 16, fontWeight: '700', flex: 1 },
+  hBidAmt: { color: C.ink, fontSize: 17, fontWeight: '800' },
+  hResultBox: { borderRadius: 14, padding: 14 },
+  hResult: { color: C.ink, fontSize: 17, fontWeight: '800', textAlign: 'center' },
+  hSold: { backgroundColor: C.green, borderRadius: 14, minHeight: 56, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 12 },
+  hSoldTxt: { color: '#fff', fontSize: 17, fontWeight: '800', textAlign: 'center' },
+  hGhost: { borderWidth: 1.5, borderColor: C.ink, borderRadius: 14, minHeight: 50, alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff' },
+  hGhostTxt: { color: C.ink, fontSize: 15.5, fontWeight: '800' },
+  hNext: { backgroundColor: C.orange, borderRadius: 14, minHeight: 50, alignItems: 'center', justifyContent: 'center' },
+  hNextTxt: { color: C.ink, fontSize: 16.5, fontWeight: '900' },
   hostBidRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 6, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.08)' },
   hostBidName: { color: 'rgba(255,255,255,0.85)', fontSize: 15, flex: 1 },
   hostBidAmt: { color: 'rgba(255,255,255,0.85)', fontSize: 15, fontWeight: '700' },
