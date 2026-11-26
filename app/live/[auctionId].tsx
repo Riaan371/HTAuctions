@@ -515,7 +515,7 @@ export default function LiveRoom() {
 
       {!canAccess ? (
         /* ---- Client, auction not live: countdown + photos of every lot ---- */
-        <ScrollView style={[s.body, wide && { maxWidth: 1280 }]} contentContainerStyle={s.bodyContent}>
+        <ScrollView style={s.bodyFull} contentContainerStyle={[s.bodyContent, { maxWidth: 1280, width: '100%', alignSelf: 'center' }]}>
           <View style={s.waitBanner}>
             {sessionInfo?.status === 'ended' ? (
               <>
@@ -556,7 +556,7 @@ export default function LiveRoom() {
         </ScrollView>
       ) : !isHost ? (
         /* ---- Client, auction live: video + sound, bidding, bid history, photos ---- */
-        <ScrollView style={[s.body, wide && { maxWidth: 1600 }]} contentContainerStyle={s.bodyContent}>
+        <ScrollView style={s.bodyFull} contentContainerStyle={[s.bodyContent, { maxWidth: 1600, width: '100%', alignSelf: 'center' }]}>
           <View style={wide ? s.wideRow : undefined}>
             <View style={wide ? s.colMain : undefined}>
               <View style={s.liveRow}>
@@ -761,6 +761,7 @@ export default function LiveRoom() {
 const s = StyleSheet.create({
   root: { flex: 1 },
   body: { flex: 1, width: '100%', maxWidth: 960, alignSelf: 'center' },
+  bodyFull: { flex: 1, width: '100%' },
   bodyContent: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 40 },
   liveRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 14 },
   liveDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: '#ef4444', marginRight: 8 },
