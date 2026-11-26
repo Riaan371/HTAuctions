@@ -23,11 +23,18 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       set({ profile: null, initialized: true });
       return;
     }
-    const { data } = await supabase
+    const fetchProfile = () => supabase
       .from('users')
       .select('id, email, role, full_name, screen_name, kyc_status, created_at')
       .eq('id', session.user.id)
       .maybeSingle();
+    let { data } = await fetchProfile();
+    // Policy: anyone who has confirmed their email (they must, to be logged in) can bid.
+    // The database checks the confirmation itself; this only asks it to switch the account on.
+    if (data && data.role === 'bidder' && data.kyc_status === 'pending') {
+      const { error } = await supabase.rpc('approve_confirmed_bidder');
+      if (!error) ({ data } = await fetchProfile());
+    }
     set({ profile: data as AppUser | null, initialized: true });
   },
   signOut: async () => {

@@ -34,7 +34,7 @@ export const TERMS: LegalSection[] = [
     body: [
       'You must be 18 or older and legally able to enter into a binding contract.',
       'The details you give us (name, surname, cell number and email) must be true and complete. You may have one account only.',
-      'Every account is checked and approved by us before it can bid. We may refuse, suspend or close an account at our discretion, for example if details are false or you have not paid for goods before.',
+      'Your account can bid once you have confirmed your email address. We may refuse, block or close an account at our discretion, for example if details are false or you have not paid for goods before.',
       'Keep your password private. Everything done through your account is treated as done by you.',
     ],
   },
@@ -128,7 +128,7 @@ export const PRIVACY: LegalSection[] = [
   {
     heading: 'Why we collect it',
     body: [
-      'To register you, check and approve your account, and let you bid.',
+      'To register you, confirm your email address, and let you bid.',
       'To run the auction, contact you if you win, invoice you and handle payment.',
       'To prevent fraud and enforce our terms, and to keep the records the law requires.',
     ],

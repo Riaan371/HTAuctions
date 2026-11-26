@@ -7,7 +7,7 @@ import { C } from './LiveViewerParts';
 
 type Row = { id: string; full_name: string | null; phone: string | null; email: string | null; created_at: string | null; kyc_status: string };
 type Filter = 'pending' | 'approved' | 'rejected';
-const LABEL: Record<Filter, string> = { pending: 'Waiting', approved: 'Approved', rejected: 'Rejected' };
+const LABEL: Record<Filter, string> = { approved: 'Can bid', rejected: 'Blocked', pending: 'Not active yet' };
 
 function waNumber(phone: string | null): string | null {
   if (!phone) return null;
@@ -19,7 +19,7 @@ function waNumber(phone: string | null): string | null {
 
 export default function AdminApprovals() {
   const queryClient = useQueryClient();
-  const [filter, setFilter] = useState<Filter>('pending');
+  const [filter, setFilter] = useState<Filter>('approved');
   const [open, setOpen] = useState(false);
 
   const { data: pendingCount } = useQuery({
@@ -48,7 +48,7 @@ export default function AdminApprovals() {
     const { error: e } = await supabase.rpc('set_bidder_status', { p_user: r.id, p_status: status });
     if (e) {
       Alert.alert('Could not update', /function|does not exist|schema cache/i.test(e.message)
-        ? 'The approval function is not installed in the database yet. Run the security SQL script first.'
+        ? 'The database function is not installed yet. Run the security SQL script first.'
         : e.message);
       return;
     }
@@ -60,10 +60,10 @@ export default function AdminApprovals() {
     <View style={s.card}>
       <Pressable onPress={() => setOpen(!open)} style={s.head}>
         <View style={{ flex: 1 }}>
-          <Text style={s.title}>Bidder approvals</Text>
-          <Text style={s.sub}>New accounts cannot bid until you approve them.</Text>
+          <Text style={s.title}>Bidders</Text>
+          <Text style={s.sub}>Anyone who confirms their email can bid. Block a bidder here if they do not pay.</Text>
         </View>
-        {!!pendingCount && pendingCount > 0 && <View style={s.badge}><Text style={s.badgeTxt}>{pendingCount} waiting</Text></View>}
+        
         <Text style={s.chev}>{open ? '▲' : '▼'}</Text>
       </Pressable>
 
@@ -92,8 +92,8 @@ export default function AdminApprovals() {
                 <View style={s.btnRow}>
                   {r.phone && <Pressable onPress={() => Linking.openURL(`tel:${r.phone}`)} style={s.ghost}><Text style={s.ghostTxt}>Call</Text></Pressable>}
                   {wa && <Pressable onPress={() => Linking.openURL(`https://wa.me/${wa}`)} style={s.ghost}><Text style={s.ghostTxt}>WhatsApp</Text></Pressable>}
-                  {filter !== 'approved' && <Pressable onPress={() => setStatus(r, 'approved')} style={s.approve}><Text style={s.approveTxt}>Approve</Text></Pressable>}
-                  {filter !== 'rejected' && <Pressable onPress={() => setStatus(r, 'rejected')} style={s.reject}><Text style={s.rejectTxt}>{filter === 'approved' ? 'Remove approval' : 'Reject'}</Text></Pressable>}
+                  {filter !== 'approved' && <Pressable onPress={() => setStatus(r, 'approved')} style={s.approve}><Text style={s.approveTxt}>{filter === 'rejected' ? 'Allow again' : 'Allow to bid'}</Text></Pressable>}
+                  {filter !== 'rejected' && <Pressable onPress={() => setStatus(r, 'rejected')} style={s.reject}><Text style={s.rejectTxt}>Block</Text></Pressable>}
                 </View>
               </View>
             );

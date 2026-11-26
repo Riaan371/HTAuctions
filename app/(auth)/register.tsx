@@ -84,7 +84,7 @@ export default function Register() {
             <Text style={s.body}>We sent a confirmation link to <Text style={{ fontWeight: '800', color: C.ink }}>{email.trim()}</Text>. Tap the link to confirm your email address, then log in.</Text>
             <View style={s.info}>
               <Text style={s.infoTitle}>What happens next</Text>
-              <Text style={s.body}>1. Confirm your email.{'\n'}2. Log in.{'\n'}3. HT Auctions checks and approves your account before it can bid. You can watch the auction and browse the lots straight away.</Text>
+              <Text style={s.body}>1. Confirm your email.{'\n'}2. Log in.{'\n'}3. You can then watch the auction and place bids.</Text>
             </View>
             <Pressable onPress={() => router.replace('/(auth)/login')} style={s.btn}>
               <Text style={s.btnTxt}>Go to log in</Text>
@@ -109,7 +109,7 @@ export default function Register() {
 
         <View style={s.card}>
           <Text style={s.heading}>Create your account</Text>
-          <Text style={s.sub}>Register once to bid in our live auctions. We use your details to approve you and to contact you if you win.</Text>
+          <Text style={s.sub}>Register once to bid in our live auctions. We use your details to run the auction and to contact you if you win.</Text>
 
           {error ? <View style={s.errorBox}><Text style={s.errorTxt}>{error}</Text></View> : null}
 

@@ -187,10 +187,10 @@ export function BidPanel({
       ) : userId && bidStatus && bidStatus !== 'approved' ? (
         // Logged in but not approved yet: say so up front instead of offering a bid button that will be refused.
         <View style={[s.box, s.boxNeutral]}>
-          <Text style={[s.boxTitle, { color: C.ink }]}>{bidStatus === 'rejected' ? 'Your account is not approved to bid' : 'Waiting for approval to bid'}</Text>
+          <Text style={[s.boxTitle, { color: C.ink }]}>{bidStatus === 'rejected' ? 'Your account is blocked from bidding' : 'Your account is not ready to bid yet'}</Text>
           <Text style={s.boxSub}>{bidStatus === 'rejected'
             ? 'Please contact HT Auctions if you think this is a mistake. You can still watch the auction.'
-            : 'HT Auctions is checking your account. You can watch the auction now, but you can bid only once you are approved.'}</Text>
+            : 'Please log out and log in again. If this message stays, contact HT Auctions. You can watch the auction meanwhile.'}</Text>
         </View>
       ) : (
         <>

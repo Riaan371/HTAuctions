@@ -675,7 +675,7 @@ export default function Profile() {
           </View>
           <View style={[s.pill, { backgroundColor: `${kycColor}18` }]}>
             <View style={[s.pillDot, { backgroundColor: kycColor }]} />
-            <Text style={[s.pillText, { color: kycColor }]}>{profile.kyc_status === 'approved' ? 'Approved to bid' : profile.kyc_status === 'pending' ? 'Waiting for approval to bid' : 'Not approved'}</Text>
+            <Text style={[s.pillText, { color: kycColor }]}>{profile.kyc_status === 'approved' ? 'Ready to bid' : profile.kyc_status === 'pending' ? 'Setting up your account' : 'Blocked from bidding'}</Text>
           </View>
         </View>
 
