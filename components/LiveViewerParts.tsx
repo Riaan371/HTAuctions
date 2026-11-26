@@ -130,9 +130,9 @@ export function LotGallery({ lot, onOpen }: { lot: LiveLot; onOpen: (l: LiveLot)
 
 // The bidding panel. onBid returns null on success or an error message.
 export function BidPanel({
-  lot, lotNumber, totalLots, bids, userId, onBid, onLogin,
+  lot, lotNumber, totalLots, bids, userId, bidStatus, onBid, onLogin,
 }: {
-  lot: LiveLot; lotNumber: number; totalLots: number; bids: LiveBid[]; userId: string | null;
+  lot: LiveLot; lotNumber: number; totalLots: number; bids: LiveBid[]; userId: string | null; bidStatus?: string | null;
   onBid: (amount: number) => Promise<string | null>; onLogin: () => void;
 }) {
   const [steps, setSteps] = useState(0);
@@ -183,6 +183,14 @@ export function BidPanel({
         <View style={[s.box, s.boxGood]}>
           <Text style={[s.boxTitle, { color: C.green }]}>🏆 You are the highest bidder</Text>
           <Text style={s.boxSub}>Your bid of {formatZAR(top!.amount)} is leading. You can bid again if someone outbids you.</Text>
+        </View>
+      ) : userId && bidStatus && bidStatus !== 'approved' ? (
+        // Logged in but not approved yet: say so up front instead of offering a bid button that will be refused.
+        <View style={[s.box, s.boxNeutral]}>
+          <Text style={[s.boxTitle, { color: C.ink }]}>{bidStatus === 'rejected' ? 'Your account is not approved to bid' : 'Waiting for approval to bid'}</Text>
+          <Text style={s.boxSub}>{bidStatus === 'rejected'
+            ? 'Please contact HT Auctions if you think this is a mistake. You can still watch the auction.'
+            : 'HT Auctions is checking your account. You can watch the auction now, but you can bid only once you are approved.'}</Text>
         </View>
       ) : (
         <>

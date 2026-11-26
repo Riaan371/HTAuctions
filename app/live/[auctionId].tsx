@@ -643,6 +643,7 @@ export default function LiveRoom() {
       totalLots={lotIds?.length ?? allLots?.length ?? 0}
       bids={liveBids ?? []}
       userId={userId}
+      bidStatus={profile?.kyc_status ?? 'pending'}
       onBid={placeBidAmount}
       onLogin={() => router.push('/(auth)/role')}
     />
