@@ -44,7 +44,7 @@ export default function Login() {
 
     setSession(data.session);
     const meta = data.user.user_metadata as Record<string, any> | undefined;
-    const { data: existing } = await supabase.from('users').select('id').eq('id', data.user.id).maybeSingle();
+    const { data: existing } = await supabase.from('users').select('id, phone').eq('id', data.user.id).maybeSingle();
 
     if (!existing) {
       // Never trust the role from the sign-up form: public sign-ups are always bidders awaiting approval.
@@ -56,6 +56,11 @@ export default function Login() {
         phone: meta?.phone,
         kyc_status: 'pending',
       });
+    }
+
+    // The sign-up trigger creates the profile without the cell number, so save it here the first time.
+    if (existing && !existing.phone && meta?.phone) {
+      await supabase.from('users').update({ phone: meta.phone }).eq('id', data.user.id);
     }
 
     // Keep a record of which terms version this person accepted (ignored if the table is not installed yet).
