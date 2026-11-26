@@ -9,6 +9,8 @@ import { supabase } from '../../lib/supabase';
 import { Colors, useAppTheme } from '../../lib/theme';
 import { TIMED_AUCTIONS_ENABLED } from '../../lib/features';
 import AdminEvents from '../../components/AdminEvents';
+import AdminApprovals from '../../components/AdminApprovals';
+import LegalLinks from '../../components/LegalLinks';
 import { C } from '../../components/LiveViewerParts';
 
 function storagePathFromUrl(url: string): string | null {
@@ -643,6 +645,7 @@ export default function Profile() {
               <Text style={{ color: C.ink, fontSize: 16, fontWeight: '800' }}>I already have an account</Text>
             </Pressable>
           </View>
+          <LegalLinks style={{ marginTop: 18 }} />
         </View>
       </SafeAreaView>
     );
@@ -688,13 +691,14 @@ export default function Profile() {
         {(profile.role === 'auctioneer' || profile.role === 'super_admin') && (
           TIMED_AUCTIONS_ENABLED
             ? <AuctioneerPanel userId={session.user.id} ink={ink} muted={muted} card={card} border={border} />
-            : <View style={{ marginBottom: 16 }}><AdminEvents /></View>
+            : <View style={{ marginBottom: 16 }}><AdminApprovals /><AdminEvents /></View>
         )}
 
         {/* Sign out */}
         <Pressable onPress={signOut} style={[s.btn, { borderWidth: 1.5, borderColor: '#DC2626', backgroundColor: 'transparent' }]}>
           <Text style={[s.btnText, { color: '#DC2626' }]}>Sign Out</Text>
         </Pressable>
+        <LegalLinks style={{ marginTop: 18 }} />
       </ScrollView>
     </SafeAreaView>
   );

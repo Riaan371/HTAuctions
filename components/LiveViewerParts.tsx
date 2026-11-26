@@ -4,6 +4,7 @@
 import { View, Text, Image, Pressable, Modal, ScrollView, ActivityIndicator, StyleSheet } from 'react-native';
 import { useEffect, useState } from 'react';
 import { formatZAR } from './LotCard';
+import { LEGAL } from '../lib/legal';
 
 export const C = {
   bg: '#EAF2F1',
@@ -166,6 +167,7 @@ export function BidPanel({
 
       <Text style={[s.kicker, { marginTop: 18 }]}>{top ? 'CURRENT BID' : 'OPENING BID'}</Text>
       <Text style={s.price}>{formatZAR(top ? top.amount : lot.starting_bid)}</Text>
+      <Text style={s.feeNote}>Buyer's commission of {LEGAL.buyerCommissionPct}% {LEGAL.vatNote} is added to the hammer price.</Text>
       {top && !iAmTop && <Text style={s.leading}>Leading: {bidderName(top)}</Text>}
       {!top && <Text style={s.leading}>No bids yet. Be the first!</Text>}
 
@@ -323,6 +325,7 @@ const s = StyleSheet.create({
   kicker: { color: C.sub, fontSize: 12.5, fontWeight: '800', letterSpacing: 1.2, marginBottom: 6 },
   panelTitle: { color: C.ink, fontSize: 24, fontWeight: '800', lineHeight: 30 },
   price: { color: C.ink, fontSize: 58, fontWeight: '900', lineHeight: 64, letterSpacing: -1 },
+  feeNote: { color: C.sub, fontSize: 13.5, marginTop: 2 },
   leading: { color: C.sub, fontSize: 16, fontWeight: '600', marginTop: 4 },
   noBids: { color: C.sub, fontSize: 16, marginTop: 4 },
   box: { borderRadius: 14, padding: 16, marginTop: 16 },

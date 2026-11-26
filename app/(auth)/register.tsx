@@ -3,8 +3,22 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import { C } from '../../components/LiveViewerParts';
+import LegalLinks from '../../components/LegalLinks';
+import { LEGAL } from '../../lib/legal';
 
 // Public sign-up is for bidders only. Auctioneer / admin accounts are created by HT Auctions.
+// We deliberately collect only what is needed: name, surname, cell and email.
+// No ID number and no bank or card details are collected here.
+
+function Check({ on, onToggle, children }: { on: boolean; onToggle: () => void; children: React.ReactNode }) {
+  return (
+    <Pressable onPress={onToggle} style={s.agreeRow}>
+      <View style={[s.box, on && s.boxOn]}>{on && <Text style={s.tick}>✓</Text>}</View>
+      <Text style={s.agreeTxt}>{children}</Text>
+    </Pressable>
+  );
+}
+
 export default function Register() {
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
@@ -13,28 +27,38 @@ export default function Register() {
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [idNumber, setIdNumber] = useState('');
-  const [agreed, setAgreed] = useState(false);
+  const [adult, setAdult] = useState(false);
+  const [terms, setTerms] = useState(false);
+  const [privacy, setPrivacy] = useState(false);
   const [error, setError] = useState('');
+  const [resendMsg, setResendMsg] = useState('');
+  const [resending, setResending] = useState(false);
+
+  const redirectTo = typeof window !== 'undefined' ? `${window.location.origin}/login` : undefined;
 
   const submit = async () => {
     const cell = phone.replace(/[\s()-]/g, '');
     if (!firstName.trim() || !surname.trim()) { setError('Enter your first name and surname.'); return; }
     if (!/^(\+27|0)\d{9}$/.test(cell)) { setError('Enter a valid South African cell number, for example 082 123 4567.'); return; }
     if (!/^\S+@\S+\.\S+$/.test(email.trim())) { setError('Enter a valid email address.'); return; }
-    if (password.length < 6) { setError('Your password must be at least 6 characters.'); return; }
-    if (idNumber.trim().length < 6) { setError('Enter your South African ID or passport number.'); return; }
-    if (!agreed) { setError('Please tick the box to confirm that you agree to pay for anything you win.'); return; }
+    if (password.length < 8) { setError('Your password must be at least 8 characters.'); return; }
+    if (!adult) { setError('You must be 18 or older to register.'); return; }
+    if (!terms) { setError('Please accept the Conditions of Sale to continue.'); return; }
+    if (!privacy) { setError('Please accept the Privacy notice to continue.'); return; }
     setError(''); setLoading(true);
 
     const { error: err } = await supabase.auth.signUp({
       email: email.trim(), password,
       options: {
+        emailRedirectTo: redirectTo,
         data: {
           role: 'bidder',
           full_name: `${firstName.trim()} ${surname.trim()}`,
           first_name: firstName.trim(), surname: surname.trim(),
-          phone: cell, id_number: idNumber.trim(),
+          phone: cell,
+          adult_confirmed: true,
+          terms_version: LEGAL.termsVersion,
+          privacy_version: LEGAL.privacyVersion,
           terms_accepted_at: new Date().toISOString(),
         },
       },
@@ -44,20 +68,31 @@ export default function Register() {
     setSent(true);
   };
 
+  const resend = async () => {
+    setResending(true); setResendMsg('');
+    const { error: err } = await supabase.auth.resend({ type: 'signup', email: email.trim(), options: { emailRedirectTo: redirectTo } });
+    setResending(false);
+    setResendMsg(err ? `Could not resend: ${err.message}` : 'Sent again. Please check your inbox and your spam folder.');
+  };
+
   if (sent) {
     return (
       <ScrollView style={{ backgroundColor: C.bg }} contentContainerStyle={s.scroll}>
         <View style={s.wrap}>
           <View style={s.card}>
             <Text style={s.heading}>Check your email</Text>
-            <Text style={s.body}>We sent a confirmation link to <Text style={{ fontWeight: '800', color: C.ink }}>{email.trim()}</Text>. Tap it to confirm your email address, then log in.</Text>
+            <Text style={s.body}>We sent a confirmation link to <Text style={{ fontWeight: '800', color: C.ink }}>{email.trim()}</Text>. Tap the link to confirm your email address, then log in.</Text>
             <View style={s.info}>
               <Text style={s.infoTitle}>What happens next</Text>
-              <Text style={s.body}>HT Auctions checks and approves every new account before it can bid. You can watch the auction and browse the lots straight away.</Text>
+              <Text style={s.body}>1. Confirm your email.{'\n'}2. Log in.{'\n'}3. HT Auctions checks and approves your account before it can bid. You can watch the auction and browse the lots straight away.</Text>
             </View>
             <Pressable onPress={() => router.replace('/(auth)/login')} style={s.btn}>
               <Text style={s.btnTxt}>Go to log in</Text>
             </Pressable>
+            <Pressable onPress={resend} disabled={resending} style={{ alignItems: 'center', marginTop: 18, paddingVertical: 6 }}>
+              <Text style={{ color: C.ink, fontSize: 16 }}>Did not get it? <Text style={{ color: C.orangeDark, fontWeight: '800' }}>{resending ? 'Sending…' : 'Send it again'}</Text></Text>
+            </Pressable>
+            {resendMsg ? <Text style={[s.body, { textAlign: 'center' }]}>{resendMsg}</Text> : null}
           </View>
         </View>
       </ScrollView>
@@ -84,15 +119,17 @@ export default function Register() {
           </View>
           <F label="Cell number" value={phone} onChange={setPhone} placeholder="082 123 4567" keyboard="phone-pad" />
           <F label="Email address" value={email} onChange={setEmail} placeholder="jane@example.com" keyboard="email-address" />
-          <F label="Password (at least 6 characters)" value={password} onChange={setPassword} placeholder="Choose a password" secure />
-          <F label="SA ID or passport number" value={idNumber} onChange={setIdNumber} placeholder="8501015009087" />
+          <F label="Password (at least 8 characters)" value={password} onChange={setPassword} placeholder="Choose a password" secure />
 
-          <Pressable onPress={() => setAgreed(!agreed)} style={s.agreeRow}>
-            <View style={[s.box, agreed && s.boxOn]}>{agreed && <Text style={s.tick}>✓</Text>}</View>
-            <Text style={s.agreeTxt}>
-              I understand that <Text style={{ fontWeight: '800' }}>every bid I place is a binding offer to buy</Text>. If I win a lot I will pay for it in full, plus any fees, by the deadline the auctioneer gives. HT Auctions may ban me from future auctions if I do not pay.
-            </Text>
-          </Pressable>
+          <Check on={adult} onToggle={() => setAdult(!adult)}>I am <Text style={{ fontWeight: '800' }}>18 years or older</Text>.</Check>
+          <Check on={terms} onToggle={() => setTerms(!terms)}>
+            I have read and agree to the{' '}
+            <Text style={s.link} onPress={() => router.push('/terms')}>Conditions of Sale</Text>. I understand that <Text style={{ fontWeight: '800' }}>every bid I place is a binding offer to buy</Text>, and that if I win I must pay in full plus the buyer's commission.
+          </Check>
+          <Check on={privacy} onToggle={() => setPrivacy(!privacy)}>
+            I have read the{' '}
+            <Text style={s.link} onPress={() => router.push('/privacy')}>Privacy notice</Text> and agree that HT Auctions may use my details to register me, run the auction and contact me.
+          </Check>
 
           <Pressable disabled={loading} onPress={submit} style={[s.btn, { opacity: loading ? 0.7 : 1 }]}>
             {loading ? <ActivityIndicator color={C.ink} /> : <Text style={s.btnTxt}>Create account</Text>}
@@ -101,7 +138,7 @@ export default function Register() {
           <Pressable onPress={() => router.replace('/(auth)/login')} style={{ alignItems: 'center', marginTop: 20, paddingVertical: 6 }}>
             <Text style={{ color: C.ink, fontSize: 16 }}>Already registered? <Text style={{ color: C.orangeDark, fontWeight: '800' }}>Log in</Text></Text>
           </Pressable>
-          <Text style={s.legal}>Your details are used only to run our auctions and are handled under POPIA.</Text>
+          <LegalLinks style={{ marginTop: 6 }} />
         </View>
       </View>
     </ScrollView>
@@ -131,16 +168,16 @@ const s = StyleSheet.create({
   twoCol: { flexDirection: 'row', gap: 12 },
   label: { fontSize: 15, fontWeight: '800', color: C.ink, marginBottom: 8 },
   input: { borderWidth: 1.5, borderColor: C.line, borderRadius: 14, paddingHorizontal: 16, minHeight: 56, fontSize: 17, color: C.ink, backgroundColor: '#fff' },
-  agreeRow: { flexDirection: 'row', gap: 14, alignItems: 'flex-start', backgroundColor: '#F4F8F7', borderRadius: 14, padding: 16, marginTop: 4 },
+  agreeRow: { flexDirection: 'row', gap: 14, alignItems: 'flex-start', backgroundColor: '#F4F8F7', borderRadius: 14, padding: 16, marginTop: 10 },
   box: { width: 28, height: 28, borderRadius: 8, borderWidth: 2, borderColor: C.ink, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center', marginTop: 2 },
   boxOn: { backgroundColor: C.orange, borderColor: C.orange },
   tick: { color: C.ink, fontSize: 18, fontWeight: '900', lineHeight: 20 },
   agreeTxt: { flex: 1, color: C.ink, fontSize: 15, lineHeight: 22 },
+  link: { color: C.orangeDark, fontWeight: '800', textDecorationLine: 'underline' },
   btn: { backgroundColor: C.orange, borderRadius: 16, minHeight: 60, alignItems: 'center', justifyContent: 'center', marginTop: 22 },
   btnTxt: { color: C.ink, fontWeight: '900', fontSize: 20 },
-  info: { backgroundColor: '#F4F8F7', borderRadius: 14, padding: 16, marginTop: 18 },
+  info: { backgroundColor: '#F4F8F7', borderRadius: 14, padding: 16, marginTop: 18, marginBottom: 18 },
   infoTitle: { color: C.ink, fontSize: 16, fontWeight: '800' },
   errorBox: { backgroundColor: C.redBg, borderWidth: 1, borderColor: '#F2B8B5', borderRadius: 12, padding: 14, marginBottom: 18 },
   errorTxt: { color: C.red, fontSize: 15, fontWeight: '600' },
-  legal: { fontSize: 13.5, color: C.sub, textAlign: 'center', marginTop: 14, lineHeight: 20 },
 });

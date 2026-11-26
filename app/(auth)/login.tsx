@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuthStore } from '../../lib/auth-store';
 import { C } from '../../components/LiveViewerParts';
+import LegalLinks from '../../components/LegalLinks';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -11,8 +12,19 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [needsConfirm, setNeedsConfirm] = useState(false);
+  const [resendMsg, setResendMsg] = useState('');
   const setSession = useAuthStore((s) => s.setSession);
   const loadProfile = useAuthStore((s) => s.loadProfile);
+
+  const resendConfirmation = async () => {
+    setResendMsg('');
+    const { error: e } = await supabase.auth.resend({
+      type: 'signup', email: email.trim(),
+      options: { emailRedirectTo: typeof window !== 'undefined' ? `${window.location.origin}/login` : undefined },
+    });
+    setResendMsg(e ? `Could not resend: ${e.message}` : 'Confirmation email sent again. Please check your inbox and spam folder.');
+  };
 
   const submit = async () => {
     if (!email || !password) { setError('Please enter your email and password.'); return; }
@@ -21,27 +33,42 @@ export default function Login() {
     const { data, error: err } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
     if (err) {
       setLoading(false);
-      setError(err.message.toLowerCase().includes('confirm')
-        ? 'Please confirm your email first — check your inbox.'
+      const needsConfirm = err.message.toLowerCase().includes('confirm');
+      setNeedsConfirm(needsConfirm);
+      setError(needsConfirm
+        ? 'Please confirm your email first. Check your inbox and spam folder.'
         : err.message);
       return;
     }
+    setNeedsConfirm(false);
 
     setSession(data.session);
-    const meta = data.user.user_metadata as Record<string, string> | undefined;
+    const meta = data.user.user_metadata as Record<string, any> | undefined;
     const { data: existing } = await supabase.from('users').select('id').eq('id', data.user.id).maybeSingle();
 
     if (!existing) {
+      // Never trust the role from the sign-up form: public sign-ups are always bidders awaiting approval.
       await supabase.from('users').insert({
         id: data.user.id,
-        role: meta?.role ?? 'bidder',
+        role: 'bidder',
         full_name: meta?.full_name ?? data.user.email?.split('@')[0] ?? 'User',
         email: data.user.email,
         phone: meta?.phone,
-        id_number_hash: meta?.id_number,
-        bank_token: meta ? JSON.stringify({ bankName: meta.bank_name, accountNumber: meta.account_number, branchCode: meta.branch_code }) : null,
         kyc_status: 'pending',
       });
+    }
+
+    // Keep a record of which terms version this person accepted (ignored if the table is not installed yet).
+    if (meta?.terms_version) {
+      try {
+        await supabase.from('consents').upsert({
+          user_id: data.user.id,
+          terms_version: meta.terms_version,
+          privacy_version: meta.privacy_version ?? null,
+          adult_confirmed: meta.adult_confirmed === true || meta.adult_confirmed === 'true',
+          accepted_at: meta.terms_accepted_at ?? new Date().toISOString(),
+        }, { onConflict: 'user_id,terms_version', ignoreDuplicates: true });
+      } catch {}
     }
 
     await loadProfile();
@@ -67,7 +94,17 @@ export default function Login() {
           <Text style={s.heading}>Welcome back</Text>
           <Text style={s.sub}>Log in to watch the auction and bid.</Text>
 
-          {error ? <View style={s.errorBox}><Text style={s.errorTxt}>{error}</Text></View> : null}
+          {error ? (
+            <View style={s.errorBox}>
+              <Text style={s.errorTxt}>{error}</Text>
+              {needsConfirm && (
+                <Pressable onPress={resendConfirmation} style={{ marginTop: 10 }}>
+                  <Text style={{ color: C.ink, fontWeight: '800', fontSize: 15, textDecorationLine: 'underline' }}>Send the confirmation email again</Text>
+                </Pressable>
+              )}
+              {resendMsg ? <Text style={[s.errorTxt, { marginTop: 8, color: C.ink }]}>{resendMsg}</Text> : null}
+            </View>
+          ) : null}
 
           <Text style={s.label}>Email address</Text>
           <TextInput style={s.input} value={email} onChangeText={setEmail} placeholder="jane@example.com"
@@ -91,6 +128,7 @@ export default function Login() {
               <Text style={{ color: C.ink, fontSize: 16 }}>New here? <Text style={{ color: C.orangeDark, fontWeight: '800' }}>Create an account</Text></Text>
             </Pressable>
           </Link>
+          <LegalLinks style={{ marginTop: 8 }} />
         </View>
       </View>
     </ScrollView>

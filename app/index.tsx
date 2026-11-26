@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useAuthStore } from '../lib/auth-store';
 import { Colors } from '../lib/theme';
 import { C } from '../components/LiveViewerParts';
+import LegalLinks from '../components/LegalLinks';
 
 export default function Welcome() {
   const session = useAuthStore((s) => s.session);
@@ -83,6 +84,7 @@ export default function Welcome() {
             <Text style={s.guestTxt}>Just watch as a guest →</Text>
           </Pressable>
         </Link>
+        <LegalLinks />
       </View>
     </View>
   );
