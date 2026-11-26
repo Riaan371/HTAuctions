@@ -20,6 +20,7 @@ const clock = (iso: string) => new Date(iso).toLocaleString('en-ZA', { day: '2-d
 
 export default function Report() {
   const { auctionId } = useLocalSearchParams<{ auctionId: string }>();
+  const [exporting, setExporting] = useState(false);
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['report', auctionId],
@@ -64,7 +65,6 @@ export default function Report() {
     return acc;
   }, {}));
 
-  const [exporting, setExporting] = useState(false);
   async function downloadExcel() {
     setExporting(true);
     try {

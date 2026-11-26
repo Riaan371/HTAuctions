@@ -22,14 +22,20 @@ const thin = { style: 'thin' as const, color: { argb: LINE } };
 const border = { top: thin, left: thin, bottom: thin, right: thin };
 
 async function loadLogo(wb: any): Promise<number | null> {
+  const sources: string[] = ['/report-logo.png'];
   try {
     const src: any = Image.resolveAssetSource(require('../assets/logo.png'));
-    const res = await fetch(src.uri);
-    const buffer = await res.arrayBuffer();
-    return wb.addImage({ buffer, extension: 'png' });
-  } catch {
-    return null;
+    if (src?.uri) sources.push(src.uri);
+  } catch {}
+  for (const uri of sources) {
+    try {
+      const res = await fetch(uri);
+      if (!res.ok) continue;
+      const buffer = await res.arrayBuffer();
+      return wb.addImage({ buffer, extension: 'png' });
+    } catch {}
   }
+  return null; // the report is still created, just without the logo
 }
 
 // Sheet with the logo, titles and an orange band; returns the sheet and the first usable row.
