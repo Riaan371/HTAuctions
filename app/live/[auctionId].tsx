@@ -8,7 +8,7 @@ import { useAuthStore } from '../../lib/auth-store';
 import { Colors } from '../../lib/theme';
 import { getAgoraToken, markSessionLive, markSessionEnded, HOST_UID } from '../../lib/agora';
 import { formatZAR } from '../../components/LotCard';
-import { PhotoViewer, LotGallery, BidPanel, BidHistory, LotsList, LotGrid, type LiveLot, type LiveBid } from '../../components/LiveViewerParts';
+import { C, PhotoViewer, LotGallery, BidPanel, BidHistory, LotsList, LotGrid, type LiveLot, type LiveBid } from '../../components/LiveViewerParts';
 
 const APP_ID = process.env.EXPO_PUBLIC_AGORA_APP_ID ?? '';
 const VIDEO_ID = 'agora-video';
@@ -500,14 +500,14 @@ export default function LiveRoom() {
   ) : null;
   const lotsEl = <LotsList lots={allLots ?? []} activeLotId={currentLot?.id ?? null} onOpen={setViewLot} />;
   const leaveEl = status === 'live' ? (
-    <Pressable onPress={leave} style={[s.outlineBtn, { marginTop: 4, marginBottom: 12 }]}>
-      <Text style={s.outlineBtnTxt}>Leave auction</Text>
+    <Pressable onPress={leave} style={[s.outlineBtn, s.outlineBtnL, { marginTop: 4, marginBottom: 12 }]}>
+      <Text style={[s.outlineBtnTxt, { color: C.ink }]}>Leave auction</Text>
     </Pressable>
   ) : null;
 
   return (
-    <SafeAreaView style={[s.root, { backgroundColor: '#000' }]}>
-      <Stack.Screen options={{ headerShown: true, headerTitle: 'Live Auction', headerStyle: { backgroundColor: '#000' }, headerTintColor: '#fff', headerLeft: () => (
+    <SafeAreaView style={[s.root, { backgroundColor: isHost ? '#000' : C.bg }]}>
+      <Stack.Screen options={{ headerShown: true, headerTitle: 'Live Auction', headerStyle: { backgroundColor: isHost ? '#000' : C.ink }, headerTintColor: '#fff', headerLeft: () => (
         <Pressable onPress={() => router.push('/(tabs)/')} style={{ paddingHorizontal: 8, paddingVertical: 4 }}>
           <Text style={{ color: '#fff', fontSize: 15 }}>🏠 Home</Text>
         </Pressable>
@@ -549,8 +549,8 @@ export default function LiveRoom() {
             <Text style={[s.waitSub, { textAlign: 'center' }]}>The lots for this auction will appear here.</Text>
           )}
 
-          <Pressable onPress={() => router.push('/(tabs)/')} style={[s.outlineBtn, { marginTop: 20 }]}>
-            <Text style={s.outlineBtnTxt}>← Back to Home</Text>
+          <Pressable onPress={() => router.push('/(tabs)/')} style={[s.outlineBtn, s.outlineBtnL, { marginTop: 20 }]}>
+            <Text style={[s.outlineBtnTxt, { color: C.ink }]}>← Back to Home</Text>
           </Pressable>
           <PhotoViewer key={viewLot?.id ?? 'none'} lot={viewLot} onClose={() => setViewLot(null)} />
         </ScrollView>
@@ -563,11 +563,11 @@ export default function LiveRoom() {
                 {status === 'live' ? (
                   <>
                     <View style={s.liveDot} />
-                    <Text style={s.liveTxt}>LIVE</Text>
+                    <Text style={[s.liveTxt, { color: '#C8261F', fontSize: 15 }]}>LIVE</Text>
                     <Text style={s.liveTitle} numberOfLines={1}>{sessionInfo?.title ?? ''}</Text>
                   </>
                 ) : (
-                  <Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 14 }}>{sessionInfo?.title ?? 'Live Auction'} is on air</Text>
+                  <Text style={{ color: C.ink, fontSize: 16 }}>{sessionInfo?.title ?? 'Live Auction'} is on air</Text>
                 )}
               </View>
 
@@ -601,8 +601,8 @@ export default function LiveRoom() {
               </View>
 
               {error && (
-                <View style={s.errorBox}>
-                  <Text style={s.errorTxt}>{error}</Text>
+                <View style={[s.errorBox, { backgroundColor: C.redBg, borderColor: '#F2B8B5' }]}>
+                  <Text style={[s.errorTxt, { color: C.red, fontSize: 15 }]}>{error}</Text>
                 </View>
               )}
 
@@ -794,23 +794,24 @@ const s = StyleSheet.create({
   joiningBox: { backgroundColor: 'rgba(217,164,65,0.15)', borderRadius: 18, paddingVertical: 16, alignItems: 'center' },
   outlineBtn: { borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)', borderRadius: 18, paddingVertical: 16, alignItems: 'center' },
   outlineBtnTxt: { color: 'rgba(255,255,255,0.8)', fontWeight: '700', fontSize: 15 },
-  waitBanner: { backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: 16, padding: 20, alignItems: 'center', marginBottom: 18 },
-  waitKicker: { color: Colors.gold, fontSize: 11, fontWeight: '800', letterSpacing: 1.6, marginBottom: 6 },
-  waitTitle: { color: '#fff', fontSize: 20, fontWeight: '800', textAlign: 'center' },
-  waitWhen: { color: Colors.gold, fontSize: 16, fontWeight: '700', marginTop: 10, textAlign: 'center' },
-  waitSub: { color: 'rgba(255,255,255,0.6)', fontSize: 13.5, lineHeight: 20, marginTop: 10, textAlign: 'center', maxWidth: 520 },
-  sectionHead: { color: '#fff', fontSize: 16, fontWeight: '800', marginBottom: 10 },
+  waitBanner: { backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: C.line, borderRadius: 20, padding: 24, alignItems: 'center', marginBottom: 18 },
+  waitKicker: { color: C.orangeDark, fontSize: 13, fontWeight: '800', letterSpacing: 1.6, marginBottom: 6 },
+  waitTitle: { color: C.ink, fontSize: 26, fontWeight: '800', textAlign: 'center' },
+  waitWhen: { color: C.ink, fontSize: 19, fontWeight: '700', marginTop: 12, textAlign: 'center' },
+  waitSub: { color: C.sub, fontSize: 16, lineHeight: 24, marginTop: 12, textAlign: 'center', maxWidth: 560 },
+  sectionHead: { color: C.ink, fontSize: 20, fontWeight: '800', marginBottom: 12 },
+  outlineBtnL: { borderColor: C.ink, backgroundColor: '#FFFFFF' },
   wideRow: { flexDirection: 'row', gap: 24, alignItems: 'flex-start' },
   colMain: { flex: 1, minWidth: 0 },
-  colSide: { width: 380 },
+  colSide: { width: 420 },
   videoWrapFull: { width: 'auto', marginHorizontal: -20, borderRadius: 0, borderWidth: 0 },
   fsBtn: { position: 'absolute', right: 10, bottom: 10, backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6 },
   fsTxt: { color: '#fff', fontSize: 12, fontWeight: '700' },
-  liveTitle: { color: 'rgba(255,255,255,0.7)', fontSize: 14, flex: 1 },
+  liveTitle: { color: C.ink, fontSize: 16, fontWeight: '700', flex: 1 },
   videoOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center', padding: 20 },
-  joinBtn: { backgroundColor: Colors.gold, borderRadius: 99, paddingVertical: 16, paddingHorizontal: 32 },
-  joinBtnTxt: { color: Colors.navy, fontWeight: '900', fontSize: 17 },
-  joinHint: { color: 'rgba(255,255,255,0.6)', fontSize: 13, marginTop: 12 },
+  joinBtn: { backgroundColor: C.orange, borderRadius: 99, paddingVertical: 18, paddingHorizontal: 36 },
+  joinBtnTxt: { color: C.ink, fontWeight: '900', fontSize: 20 },
+  joinHint: { color: 'rgba(255,255,255,0.85)', fontSize: 15, marginTop: 12 },
   previewLotCard: { flexDirection: 'row', backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 14, overflow: 'hidden', marginBottom: 12 },
   previewLotImg: { width: 100, height: 100 },
   previewLotCat: { color: 'rgba(255,255,255,0.4)', fontSize: 10, fontWeight: '700', letterSpacing: 0.5, marginBottom: 2 },

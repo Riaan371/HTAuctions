@@ -1,9 +1,24 @@
-// Building blocks for the CLIENT side of the live auction room:
-// photo gallery + full-screen viewer, bid panel, bid history, lot list.
+// Building blocks for the CLIENT side of the live auction room, in the
+// "West Coast heritage" look: light sea-mist background, navy text, sunset
+// orange for the action. Built to be read at a glance while bidding.
 import { View, Text, Image, Pressable, Modal, ScrollView, ActivityIndicator, StyleSheet } from 'react-native';
 import { useEffect, useState } from 'react';
-import { Colors } from '../lib/theme';
 import { formatZAR } from './LotCard';
+
+export const C = {
+  bg: '#EAF2F1',
+  card: '#FFFFFF',
+  line: '#D3E2E0',
+  ink: '#17293D',
+  sub: '#456070',
+  orange: '#E8742C',
+  orangeDark: '#B8500F',
+  orangeSoft: '#FDF0E6',
+  green: '#146C43',
+  greenBg: '#E2F4EA',
+  red: '#B42318',
+  redBg: '#FDECEA',
+};
 
 export type LiveLot = {
   id: string;
@@ -56,11 +71,11 @@ export function PhotoViewer({ lot, onClose }: { lot: LiveLot | null; onClose: ()
             )}
           </View>
         ) : (
-          <View style={s.vStage}><Text style={{ color: 'rgba(255,255,255,0.5)' }}>No photos for this lot</Text></View>
+          <View style={s.vStage}><Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 16 }}>No photos for this lot</Text></View>
         )}
         <View style={s.vCaption}>
           <Text style={s.vTitle}>{lot?.title}</Text>
-          {photos.length > 1 && <Text style={s.vSub}>{i + 1} / {photos.length}</Text>}
+          {photos.length > 1 && <Text style={s.vSub}>Photo {i + 1} of {photos.length}</Text>}
           {lot && <Text style={s.vSub}>Opening bid {formatZAR(lot.starting_bid)}</Text>}
           {!!lot?.description && <Text style={s.vDesc}>{lot.description}</Text>}
         </View>
@@ -77,7 +92,7 @@ export function LotGallery({ lot, onOpen }: { lot: LiveLot; onOpen: (l: LiveLot)
     return (
       <View style={[s.galleryMain, { alignItems: 'center', justifyContent: 'center' }]}>
         <Text style={{ fontSize: 34 }}>📷</Text>
-        <Text style={{ color: 'rgba(255,255,255,0.45)', fontSize: 13, marginTop: 6 }}>No photos for this lot</Text>
+        <Text style={{ color: C.sub, fontSize: 15, marginTop: 6 }}>No photos for this lot</Text>
       </View>
     );
   }
@@ -149,53 +164,50 @@ export function BidPanel({
       {totalLots > 0 && <Text style={s.kicker}>LOT {lotNumber} OF {totalLots}</Text>}
       <Text style={s.panelTitle}>{lot.title}</Text>
 
-      <Text style={[s.kicker, { marginTop: 14 }]}>{top ? 'CURRENT BID' : 'OPENING BID'}</Text>
+      <Text style={[s.kicker, { marginTop: 18 }]}>{top ? 'CURRENT BID' : 'OPENING BID'}</Text>
       <Text style={s.price}>{formatZAR(top ? top.amount : lot.starting_bid)}</Text>
-
-      {top ? (
-        <View style={[s.pill, iAmTop ? s.pillGood : s.pillNeutral]}>
-          <Text style={[s.pillTxt, { color: iAmTop ? '#4ade80' : 'rgba(255,255,255,0.85)' }]}>
-            {iAmTop ? "🏆 You're the highest bidder" : `Leading: ${bidderName(top)}`}
-          </Text>
-        </View>
-      ) : (
-        <Text style={s.noBids}>No bids yet. Be the first!</Text>
-      )}
-      {!iAmTop && iHaveBid && !closed && (
-        <View style={[s.pill, s.pillBad]}><Text style={[s.pillTxt, { color: '#f87171' }]}>You have been outbid</Text></View>
-      )}
+      {top && !iAmTop && <Text style={s.leading}>Leading: {bidderName(top)}</Text>}
+      {!top && <Text style={s.leading}>No bids yet. Be the first!</Text>}
 
       {closed ? (
-        <View style={[s.closedBox, sold ? s.closedSold : s.closedNoSale]}>
-          <Text style={s.closedTxt}>
+        <View style={[s.box, sold ? s.boxGood : s.boxNeutral]}>
+          <Text style={[s.boxTitle, { color: sold ? C.green : C.ink }]}>
             {sold ? `SOLD for ${formatZAR(top?.amount ?? lot.current_bid ?? 0)}` : 'NO SALE'}
           </Text>
-          {sold && top && <Text style={s.closedSub}>Winning bidder: {bidderName(top)}</Text>}
+          {sold && top && <Text style={s.boxSub}>Winning bidder: {bidderName(top)}</Text>}
         </View>
       ) : iAmTop ? (
         // You already lead: no bid controls until someone outbids you.
-        <View style={[s.closedBox, s.closedSold]}>
-          <Text style={s.closedTxt}>You are the highest bidder</Text>
-          <Text style={s.closedSub}>Your bid of {formatZAR(top!.amount)} is leading. You can bid again if someone outbids you.</Text>
+        <View style={[s.box, s.boxGood]}>
+          <Text style={[s.boxTitle, { color: C.green }]}>🏆 You are the highest bidder</Text>
+          <Text style={s.boxSub}>Your bid of {formatZAR(top!.amount)} is leading. You can bid again if someone outbids you.</Text>
         </View>
       ) : (
         <>
+          {iHaveBid && (
+            <View style={[s.box, s.boxBad]}>
+              <Text style={[s.boxTitle, { color: C.red }]}>You have been outbid</Text>
+            </View>
+          )}
           <View style={s.stepper}>
             <Pressable onPress={() => setSteps((n) => Math.max(0, n - 1))} disabled={steps === 0} style={[s.stepBtn, steps === 0 && { opacity: 0.3 }]}>
               <Text style={s.stepTxt}>−</Text>
             </Pressable>
-            <Text style={s.stepAmt}>{formatZAR(amount)}</Text>
+            <View style={{ alignItems: 'center' }}>
+              <Text style={s.stepLabel}>YOUR BID</Text>
+              <Text style={s.stepAmt}>{formatZAR(amount)}</Text>
+            </View>
             <Pressable onPress={() => setSteps((n) => n + 1)} style={s.stepBtn}>
               <Text style={s.stepTxt}>+</Text>
             </Pressable>
           </View>
-          <Text style={s.stepHint}>Each step is {formatZAR(inc)}</Text>
+          <Text style={s.stepHint}>Tap + or − to change your bid ({formatZAR(inc)} each step)</Text>
           <Pressable onPress={press} disabled={busy} style={[s.bidBtn, busy && { opacity: 0.6 }]}>
-            {busy ? <ActivityIndicator color={Colors.navy} /> : <Text style={s.bidBtnTxt}>{userId ? `BID ${formatZAR(amount)}` : 'Log in to bid'}</Text>}
+            {busy ? <ActivityIndicator color={C.ink} /> : <Text style={s.bidBtnTxt}>{userId ? `BID ${formatZAR(amount)}` : 'Log in to bid'}</Text>}
           </Pressable>
         </>
       )}
-      {msg && <Text style={[s.msg, { color: msg.ok ? '#4ade80' : '#f87171' }]}>{msg.text}</Text>}
+      {msg && <Text style={[s.msg, { color: msg.ok ? C.green : C.red }]}>{msg.text}</Text>}
     </View>
   );
 }
@@ -210,12 +222,12 @@ export function BidHistory({ bids, userId }: { bids: LiveBid[]; userId: string |
         bids.slice(0, 10).map((b, idx) => (
           <View key={b.id} style={[s.bidRow, idx === 0 && s.bidRowTop]}>
             <View style={{ flex: 1 }}>
-              <Text style={[s.bidName, idx === 0 && { color: Colors.gold }]} numberOfLines={1}>
+              <Text style={s.bidName} numberOfLines={1}>
                 {userId && b.bidder_id === userId ? 'You' : bidderName(b)}
               </Text>
               <Text style={s.bidTime}>{clock(b.created_at)}</Text>
             </View>
-            <Text style={[s.bidAmt, idx === 0 && { color: Colors.gold }]}>{formatZAR(b.amount)}</Text>
+            <Text style={[s.bidAmt, idx === 0 && { color: C.orangeDark }]}>{formatZAR(b.amount)}</Text>
           </View>
         ))
       )}
@@ -226,10 +238,10 @@ export function BidHistory({ bids, userId }: { bids: LiveBid[]; userId: string |
 /* ------------------------------------------------------------------ lots */
 
 function statusOf(l: LiveLot, activeId: string | null): { text: string; color: string } {
-  if (l.winner_id) return { text: 'SOLD', color: '#4ade80' };
-  if (l.no_sale) return { text: 'NO SALE', color: 'rgba(255,255,255,0.45)' };
-  if (activeId && l.id === activeId) return { text: 'ON THE BLOCK', color: Colors.gold };
-  return { text: `Opening ${formatZAR(l.starting_bid)}`, color: 'rgba(255,255,255,0.6)' };
+  if (l.winner_id) return { text: 'SOLD', color: C.green };
+  if (l.no_sale) return { text: 'NO SALE', color: C.sub };
+  if (activeId && l.id === activeId) return { text: 'ON THE BLOCK', color: C.orangeDark };
+  return { text: `Opening bid ${formatZAR(l.starting_bid)}`, color: C.sub };
 }
 
 // Compact list of every lot in the auction. Tapping one opens its photos.
@@ -251,7 +263,7 @@ export function LotsList({ lots, activeLotId, onOpen }: { lots: LiveLot[]; activ
               <Text style={s.lotRowTitle} numberOfLines={1}>{l.title}</Text>
               <Text style={[s.lotRowStatus, { color: st.color }]}>{st.text}</Text>
             </View>
-            <Text style={{ color: 'rgba(255,255,255,0.35)', fontSize: 20 }}>›</Text>
+            <Text style={{ color: C.sub, fontSize: 22 }}>›</Text>
           </Pressable>
         );
       })}
@@ -274,7 +286,7 @@ export function LotGrid({ lots, onOpen, columns }: { lots: LiveLot[]; onOpen: (l
               <View style={s.photoCount}><Text style={s.photoCountTxt}>📷 {l.photos!.length}</Text></View>
             )}
           </View>
-          <View style={{ padding: 12 }}>
+          <View style={{ padding: 14 }}>
             <Text style={s.lotRowNo}>LOT {idx + 1}</Text>
             <Text style={s.gridTitle} numberOfLines={2}>{l.title}</Text>
             <Text style={s.gridBid}>Opening bid {formatZAR(l.starting_bid)}</Text>
@@ -286,72 +298,70 @@ export function LotGrid({ lots, onOpen, columns }: { lots: LiveLot[]; onOpen: (l
 }
 
 const s = StyleSheet.create({
-  // photo viewer
+  // photo viewer (stays dark: photos read best on black)
   vBg: { flex: 1, backgroundColor: 'rgba(0,0,0,0.95)', justifyContent: 'center' },
-  vClose: { position: 'absolute', top: 16, right: 16, zIndex: 10, width: 42, height: 42, borderRadius: 21, backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center' },
-  vCloseTxt: { color: '#fff', fontSize: 20 },
+  vClose: { position: 'absolute', top: 16, right: 16, zIndex: 10, width: 46, height: 46, borderRadius: 23, backgroundColor: 'rgba(255,255,255,0.18)', alignItems: 'center', justifyContent: 'center' },
+  vCloseTxt: { color: '#fff', fontSize: 22 },
   vStage: { flex: 1, marginTop: 70, marginBottom: 8, alignItems: 'center', justifyContent: 'center' },
   vImg: { width: '100%', height: '100%' },
   vCaption: { paddingHorizontal: 20, paddingBottom: 28, alignItems: 'center' },
-  vTitle: { color: '#fff', fontSize: 18, fontWeight: '800', textAlign: 'center' },
-  vSub: { color: 'rgba(255,255,255,0.6)', fontSize: 13, marginTop: 3 },
-  vDesc: { color: 'rgba(255,255,255,0.75)', fontSize: 13, lineHeight: 19, marginTop: 8, textAlign: 'center', maxWidth: 560 },
-  arrow: { position: 'absolute', top: '45%', width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(0,0,0,0.55)', alignItems: 'center', justifyContent: 'center' },
+  vTitle: { color: '#fff', fontSize: 20, fontWeight: '800', textAlign: 'center' },
+  vSub: { color: 'rgba(255,255,255,0.75)', fontSize: 15, marginTop: 4 },
+  vDesc: { color: 'rgba(255,255,255,0.85)', fontSize: 15, lineHeight: 22, marginTop: 8, textAlign: 'center', maxWidth: 560 },
+  arrow: { position: 'absolute', top: '45%', width: 46, height: 46, borderRadius: 23, backgroundColor: 'rgba(0,0,0,0.55)', alignItems: 'center', justifyContent: 'center' },
   arrowTxt: { color: '#fff', fontSize: 28, lineHeight: 32 },
 
   // gallery
-  galleryMain: { width: '100%', aspectRatio: 4 / 3, maxHeight: 420, backgroundColor: '#0b0b0b', borderRadius: 14, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' },
-  zoomHint: { position: 'absolute', bottom: 8, right: 8, backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 },
-  zoomHintTxt: { color: 'rgba(255,255,255,0.85)', fontSize: 11 },
-  thumb: { width: 64, height: 64, borderRadius: 8, overflow: 'hidden', borderWidth: 2, borderColor: 'transparent', opacity: 0.7 },
-  thumbOn: { borderColor: Colors.gold, opacity: 1 },
+  galleryMain: { width: '100%', aspectRatio: 4 / 3, maxHeight: 460, backgroundColor: '#F4F8F7', borderRadius: 16, overflow: 'hidden', borderWidth: 1, borderColor: C.line },
+  zoomHint: { position: 'absolute', bottom: 8, right: 8, backgroundColor: 'rgba(23,41,61,0.8)', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4 },
+  zoomHintTxt: { color: '#fff', fontSize: 12 },
+  thumb: { width: 68, height: 68, borderRadius: 10, overflow: 'hidden', borderWidth: 3, borderColor: 'transparent', opacity: 0.8 },
+  thumbOn: { borderColor: C.orange, opacity: 1 },
 
   // panels
-  panel: { backgroundColor: 'rgba(255,255,255,0.07)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)', borderRadius: 18, padding: 16, marginBottom: 14 },
-  kicker: { color: 'rgba(255,255,255,0.45)', fontSize: 10.5, fontWeight: '700', letterSpacing: 1.4, marginBottom: 6 },
-  panelTitle: { color: '#fff', fontSize: 20, fontWeight: '800' },
-  price: { color: Colors.gold, fontSize: 40, fontWeight: '800', marginTop: 2 },
-  noBids: { color: 'rgba(255,255,255,0.5)', fontSize: 13, marginTop: 6 },
-  pill: { alignSelf: 'flex-start', borderRadius: 99, paddingHorizontal: 12, paddingVertical: 6, marginTop: 8 },
-  pillGood: { backgroundColor: 'rgba(22,163,74,0.18)' },
-  pillNeutral: { backgroundColor: 'rgba(255,255,255,0.1)' },
-  pillBad: { backgroundColor: 'rgba(220,38,38,0.16)' },
-  pillTxt: { fontSize: 13, fontWeight: '700' },
-  stepper: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 18 },
-  stepBtn: { width: 52, height: 52, borderRadius: 26, backgroundColor: 'rgba(255,255,255,0.12)', alignItems: 'center', justifyContent: 'center' },
-  stepTxt: { color: '#fff', fontSize: 28, fontWeight: '700', lineHeight: 32 },
-  stepAmt: { color: '#fff', fontSize: 24, fontWeight: '800' },
-  stepHint: { color: 'rgba(255,255,255,0.4)', fontSize: 11.5, textAlign: 'center', marginTop: 6 },
-  bidBtn: { backgroundColor: Colors.gold, borderRadius: 16, paddingVertical: 18, alignItems: 'center', marginTop: 14 },
-  bidBtnTxt: { color: Colors.navy, fontSize: 19, fontWeight: '900', letterSpacing: 0.5 },
-  msg: { marginTop: 10, fontSize: 13.5, fontWeight: '600', textAlign: 'center' },
-  closedBox: { borderRadius: 14, padding: 16, marginTop: 16, alignItems: 'center' },
-  closedSold: { backgroundColor: 'rgba(22,163,74,0.18)' },
-  closedNoSale: { backgroundColor: 'rgba(255,255,255,0.08)' },
-  closedTxt: { color: '#fff', fontSize: 20, fontWeight: '900' },
-  closedSub: { color: 'rgba(255,255,255,0.7)', fontSize: 13, marginTop: 4 },
+  panel: { backgroundColor: C.card, borderWidth: 1, borderColor: C.line, borderRadius: 20, padding: 20, marginBottom: 16 },
+  kicker: { color: C.sub, fontSize: 12.5, fontWeight: '800', letterSpacing: 1.2, marginBottom: 6 },
+  panelTitle: { color: C.ink, fontSize: 24, fontWeight: '800', lineHeight: 30 },
+  price: { color: C.ink, fontSize: 58, fontWeight: '900', lineHeight: 64, letterSpacing: -1 },
+  leading: { color: C.sub, fontSize: 16, fontWeight: '600', marginTop: 4 },
+  noBids: { color: C.sub, fontSize: 16, marginTop: 4 },
+  box: { borderRadius: 14, padding: 16, marginTop: 16 },
+  boxGood: { backgroundColor: C.greenBg },
+  boxBad: { backgroundColor: C.redBg, marginBottom: 4 },
+  boxNeutral: { backgroundColor: '#EEF3F2' },
+  boxTitle: { fontSize: 20, fontWeight: '800' },
+  boxSub: { color: C.ink, fontSize: 15.5, lineHeight: 22, marginTop: 6 },
+  stepper: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 20 },
+  stepBtn: { width: 64, height: 64, borderRadius: 32, backgroundColor: '#E3EDEB', alignItems: 'center', justifyContent: 'center' },
+  stepTxt: { color: C.ink, fontSize: 34, fontWeight: '700', lineHeight: 38 },
+  stepLabel: { color: C.sub, fontSize: 12, fontWeight: '800', letterSpacing: 1.2 },
+  stepAmt: { color: C.ink, fontSize: 32, fontWeight: '900' },
+  stepHint: { color: C.sub, fontSize: 14, textAlign: 'center', marginTop: 8 },
+  bidBtn: { backgroundColor: C.orange, borderRadius: 18, minHeight: 68, alignItems: 'center', justifyContent: 'center', marginTop: 16 },
+  bidBtnTxt: { color: C.ink, fontSize: 24, fontWeight: '900', letterSpacing: 0.4 },
+  msg: { marginTop: 12, fontSize: 16, fontWeight: '700', textAlign: 'center' },
 
   // bid history
-  bidRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 9, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.08)' },
+  bidRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, borderTopWidth: 1, borderTopColor: C.line },
   bidRowTop: { borderTopWidth: 0 },
-  bidName: { color: '#fff', fontSize: 14.5, fontWeight: '700' },
-  bidTime: { color: 'rgba(255,255,255,0.4)', fontSize: 11.5, marginTop: 1 },
-  bidAmt: { color: '#fff', fontSize: 16, fontWeight: '800' },
+  bidName: { color: C.ink, fontSize: 17, fontWeight: '700' },
+  bidTime: { color: C.sub, fontSize: 13.5, marginTop: 1 },
+  bidAmt: { color: C.ink, fontSize: 20, fontWeight: '800' },
 
   // lots list
-  lotRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 8, paddingHorizontal: 6, borderRadius: 12, marginTop: 4 },
-  lotRowOn: { backgroundColor: 'rgba(217,164,65,0.12)' },
-  lotRowImg: { width: 64, height: 64, borderRadius: 10, backgroundColor: 'rgba(255,255,255,0.06)' },
-  lotRowNo: { color: 'rgba(255,255,255,0.4)', fontSize: 10, fontWeight: '700', letterSpacing: 1.2 },
-  lotRowTitle: { color: '#fff', fontSize: 15, fontWeight: '700', marginTop: 1 },
-  lotRowStatus: { fontSize: 12, fontWeight: '700', marginTop: 2 },
+  lotRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, paddingHorizontal: 8, borderRadius: 14, marginTop: 4 },
+  lotRowOn: { backgroundColor: C.orangeSoft },
+  lotRowImg: { width: 72, height: 72, borderRadius: 12, backgroundColor: '#EEF3F2' },
+  lotRowNo: { color: C.sub, fontSize: 12, fontWeight: '800', letterSpacing: 1.2 },
+  lotRowTitle: { color: C.ink, fontSize: 17, fontWeight: '700', marginTop: 1 },
+  lotRowStatus: { fontSize: 14, fontWeight: '700', marginTop: 2 },
 
   // pre-live grid
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 14, justifyContent: 'flex-start' },
-  gridCard: { backgroundColor: 'rgba(255,255,255,0.07)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)', borderRadius: 16, overflow: 'hidden' },
-  gridImgWrap: { width: '100%', aspectRatio: 4 / 3, backgroundColor: '#0b0b0b', alignItems: 'center', justifyContent: 'center' },
-  gridTitle: { color: '#fff', fontSize: 16, fontWeight: '800', marginTop: 2, minHeight: 40 },
-  gridBid: { color: Colors.gold, fontSize: 13.5, fontWeight: '700', marginTop: 6 },
-  photoCount: { position: 'absolute', bottom: 8, right: 8, backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 },
-  photoCountTxt: { color: '#fff', fontSize: 11 },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 16, justifyContent: 'flex-start' },
+  gridCard: { backgroundColor: C.card, borderWidth: 1, borderColor: C.line, borderRadius: 18, overflow: 'hidden' },
+  gridImgWrap: { width: '100%', aspectRatio: 4 / 3, backgroundColor: '#F4F8F7', alignItems: 'center', justifyContent: 'center' },
+  gridTitle: { color: C.ink, fontSize: 18, fontWeight: '800', marginTop: 2, minHeight: 44 },
+  gridBid: { color: C.orangeDark, fontSize: 15.5, fontWeight: '800', marginTop: 6 },
+  photoCount: { position: 'absolute', bottom: 8, right: 8, backgroundColor: 'rgba(23,41,61,0.8)', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 },
+  photoCountTxt: { color: '#fff', fontSize: 12 },
 });
