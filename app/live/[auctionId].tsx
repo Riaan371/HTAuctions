@@ -627,6 +627,11 @@ export default function LiveRoom() {
   ) : null;
   const hostLotsEl = <LotsList lots={allLots ?? []} activeLotId={status === 'live' ? currentLot?.id ?? null : null} onOpen={status === 'live' ? goToLot : setViewLot} />;
 
+  // Opens the hall-TV page in its own window: drag it to the TV screen and press F for full screen.
+  function openTv() {
+    if (typeof window !== 'undefined') window.open(`${window.location.origin}/tv/${auctionId}`, 'htauctions-tv', 'popup,width=1280,height=720');
+  }
+
   function goFullscreen() {
     const el: any = typeof document !== 'undefined' ? document.getElementById(VIDEO_ID)?.parentElement : null;
     try { (el?.requestFullscreen ?? el?.webkitRequestFullscreen)?.call(el); } catch {}
@@ -833,6 +838,9 @@ export default function LiveRoom() {
                 <Pressable onPress={join} style={s.hStart}>
                   <Text style={s.hStartTxt}>Start live session</Text>
                 </Pressable>
+                <Pressable onPress={openTv} style={[s.hOutline, { marginTop: 12 }]}>
+                  <Text style={s.hOutlineTxt}>Open the TV screen for the hall</Text>
+                </Pressable>
                 <Pressable onPress={() => router.replace('/(tabs)/profile')} style={[s.hOutline, { marginTop: 12 }]}>
                   <Text style={s.hOutlineTxt}>← Back to profile</Text>
                 </Pressable>
@@ -860,6 +868,9 @@ export default function LiveRoom() {
                       <Text style={[s.hCtlTxt, !camOn && { color: C.red }]}>{camOn ? 'Turn camera off' : 'Turn camera on'}</Text>
                     </Pressable>
                   )}
+                  <Pressable onPress={openTv} style={s.hCtl}>
+                    <Text style={s.hCtlTxt}>TV screen</Text>
+                  </Pressable>
                   <Pressable onPress={endAuction} style={s.hEnd}>
                     <Text style={s.hEndTxt}>End auction</Text>
                   </Pressable>

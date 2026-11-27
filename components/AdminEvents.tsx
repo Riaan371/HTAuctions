@@ -49,6 +49,11 @@ function EventCard({ ev, onDelete, onReopen, onStartOver }: { ev: EventRow; onDe
             </Pressable>
           </>
         )}
+        {!ended && (
+          <Pressable onPress={() => { if (typeof window !== 'undefined') window.open(`${window.location.origin}/tv/${ev.auction_id}`, 'htauctions-tv'); }} style={[s.btn, s.btnOutline]}>
+            <Text style={s.btnOutlineTxt}>TV screen</Text>
+          </Pressable>
+        )}
         {ev.status === 'live' && (
           <Pressable onPress={() => router.push(`/report/${ev.auction_id}`)} style={[s.btn, s.btnOutline]}>
             <Text style={s.btnOutlineTxt}>Report so far</Text>
