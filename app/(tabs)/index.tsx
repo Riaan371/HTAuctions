@@ -216,10 +216,16 @@ function NextLiveCard({ events, loadError }: { events: any[]; loadError?: boolea
   }
 
   return (
-    <View style={s.emptyEvents}>
-      <Text style={{ fontSize: 48, marginBottom: 12 }}>📅</Text>
-      <Text style={[s.emptyTitle, { color: ink }]}>No live auction scheduled yet</Text>
-      <Text style={[s.emptyBody, { color: muted }]}>The date and time of the next live auction will appear here. Check back soon.</Text>
+    <View style={s.nlWrap}>
+      <View style={s.nlCard}>
+        <View style={s.calIcon}>
+          <View style={s.calTop} />
+          <View style={s.calGrid}>{[0, 1, 2, 3, 4, 5].map((i) => <View key={i} style={[s.calDot, i === 4 && { backgroundColor: C.orange }]} />)}</View>
+        </View>
+        <Text style={s.nlLabel}>NEXT LIVE AUCTION</Text>
+        <Text style={[s.nlTitle, { marginTop: 4 }]}>To be announced</Text>
+        <Text style={s.nlBody}>The date and time of the next live auction will appear here. Turn on notifications and we'll tell you as soon as it is scheduled.</Text>
+      </View>
     </View>
   );
 }
@@ -535,10 +541,10 @@ const s = StyleSheet.create({
   root: { flex: 1 },
 
   // Header
-  header: { backgroundColor: Colors.navy, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 14 },
-  logo: { width: 60, height: 60 },
-  headerTitle: { color: '#FFFFFF', fontSize: 22, fontWeight: '800', letterSpacing: 0.2 },
-  headerOnline: { color: C.orange, fontSize: 13, fontWeight: '700', letterSpacing: 0.6, marginTop: 1 },
+  header: { backgroundColor: Colors.navy, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 18, borderBottomWidth: 4, borderBottomColor: C.orange },
+  logo: { width: 72, height: 72 },
+  headerTitle: { color: '#FFFFFF', fontSize: 26, fontWeight: '900', letterSpacing: 0.2 },
+  headerOnline: { color: '#FFB070', fontSize: 14, fontWeight: '800', letterSpacing: 1.6, marginTop: 2, textTransform: 'uppercase' },
   headerSub: { color: 'rgba(255,255,255,0.8)', fontSize: 13, marginTop: 1 },
   refreshBtn: { padding: 8, borderRadius: 8, backgroundColor: 'rgba(196,154,34,0.15)' },
 
@@ -608,6 +614,12 @@ const s = StyleSheet.create({
   nlLivePill: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#DC2626', borderRadius: 20, paddingHorizontal: 14, paddingVertical: 6, marginBottom: 16 },
   nlBtn: { backgroundColor: C.orange, borderRadius: 16, minHeight: 60, paddingHorizontal: 36, alignItems: 'center', justifyContent: 'center', marginTop: 22 },
   nlBtnTxt: { color: C.ink, fontWeight: '900', fontSize: 19 },
+
+  // Drawn calendar icon (no emoji)
+  calIcon: { width: 76, height: 76, borderRadius: 16, backgroundColor: '#fff', borderWidth: 3, borderColor: C.ink, overflow: 'hidden', marginBottom: 20 },
+  calTop: { height: 20, backgroundColor: C.orange },
+  calGrid: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 9, paddingTop: 7, gap: 7 },
+  calDot: { width: 10, height: 10, borderRadius: 3, backgroundColor: C.line },
 
   // Empty state
   emptyEvents: { alignItems: 'center', paddingVertical: 48, paddingHorizontal: 32 },
