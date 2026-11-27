@@ -2,12 +2,12 @@
 // ready to print on A4 landscape. Runs in the browser; the Excel library is loaded only when needed.
 import { Image } from 'react-native';
 
-export type ReportLot = { no: number; title: string; opening: number; reserve: number | null; bidCount: number; top: number | null; topName: string; result: string; price: number | null; buyer: string; cell: string; email: string };
+export type ReportLot = { no: number; title: string; opening: number; reserve: number | null; bidCount: number; roomCount: number; top: number | null; topSource: string; topName: string; result: string; price: number | null; buyer: string; cell: string; email: string };
 export type ReportBuyer = { name: string; cell: string; email: string; lots: string; count: number; total: number };
-export type ReportBid = { time: string; lot: number; lotTitle: string; bidder: string; cell: string; amount: number };
+export type ReportBid = { time: string; lot: number; lotTitle: string; source: string; bidder: string; cell: string; amount: number };
 export type ReportData = {
   title: string; when: string; status: string;
-  stats: { lots: number; soldOnline: number; onlineTotal: number; soldRoom: number; noSale: number; notClosed: number; bidders: number; bids: number };
+  stats: { lots: number; soldOnline: number; onlineTotal: number; soldRoom: number; roomTotal: number; noSale: number; notClosed: number; bidders: number; bids: number; roomBids: number };
   lots: ReportLot[]; buyers: ReportBuyer[]; bids: ReportBid[];
 };
 
@@ -152,17 +152,21 @@ export async function downloadAuctionXlsx(d: ReportData) {
       ['', 'Sold online', d.stats.soldOnline],
       ['', 'Online sales total (hammer price)', d.stats.onlineTotal],
       ['', 'Sold in the room', d.stats.soldRoom],
+      ['', 'Room sales total (hammer price)', d.stats.roomTotal],
+      ['', 'TOTAL SALES (online + room)', d.stats.onlineTotal + d.stats.roomTotal],
       ['', 'No sale', d.stats.noSale],
       ['', 'Not yet closed', d.stats.notClosed],
       ['', 'Online bidders', d.stats.bidders],
       ['', 'Online bids placed', d.stats.bids],
+      ['', 'Room bids recorded', d.stats.roomBids],
     ];
+    const moneyRows = new Set([3, 5, 6]); // 1-based position of the rand rows above
     const cols: Col[] = [{ header: '' }, { header: 'Key figure' }, { header: 'Value', align: 'right', fmt: RAND }];
     const lastRow = writeTable(ws, headerRow, cols, rows, widths);
     // only the money row uses the rand format
     for (let r = headerRow + 1; r <= lastRow; r++) {
       const c = ws.getCell(r, 3);
-      c.numFmt = r === headerRow + 3 ? RAND : '0';
+      c.numFmt = moneyRows.has(r - headerRow) ? RAND : '0';
       c.font = { name: 'Calibri', size: 12, bold: true, color: { argb: NAVY } };
       ws.getCell(r, 1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFFFF' } };
       ws.getCell(r, 1).border = {};
@@ -172,7 +176,7 @@ export async function downloadAuctionXlsx(d: ReportData) {
     ws.autoFilter = undefined;
     ws.mergeCells(lastRow + 2, 2, lastRow + 2, 3);
     const note = ws.getCell(lastRow + 2, 2);
-    note.value = 'Buyers in the room, and their prices, are recorded separately by the auctioneer.';
+    note.value = 'Room sales use the highest room bid entered by the auctioneer. Buyers in the room have no account, so no name is shown.';
     note.font = { name: 'Calibri', size: 10, italic: true, color: { argb: GREY } };
     note.alignment = { wrapText: true, vertical: 'top' };
     ws.getRow(lastRow + 2).height = 30;
@@ -180,26 +184,32 @@ export async function downloadAuctionXlsx(d: ReportData) {
 
   // ---------- Lots ----------
   {
-    const widths = [7, 36, 15, 15, 11, 17, 18, 15, 24, 16, 30];
+    const widths = [7, 36, 15, 15, 9, 9, 17, 13, 18, 15, 24, 16, 30];
     const { ws, headerRow } = makeSheet(wb, logoId, 'Lots', 'Result of every lot', widths, d);
     const cols: Col[] = [
       { header: 'Lot', align: 'center' }, { header: 'Description', wrap: true },
       { header: 'Opening bid', fmt: RAND, align: 'right' }, { header: 'Reserve', fmt: RAND, align: 'right' },
-      { header: 'Online bids', align: 'center' }, { header: 'Highest online bid', fmt: RAND, align: 'right' },
+      { header: 'Online bids', align: 'center' }, { header: 'Room bids', align: 'center' },
+      { header: 'Highest bid', fmt: RAND, align: 'right' }, { header: 'Highest was', align: 'center' },
       { header: 'Result', align: 'center' }, { header: 'Sold price', fmt: RAND, align: 'right' },
-      { header: 'Online buyer', wrap: true }, { header: 'Cell', wrap: true }, { header: 'Email', wrap: true },
+      { header: 'Buyer', wrap: true }, { header: 'Cell', wrap: true }, { header: 'Email', wrap: true },
     ];
-    const rows = d.lots.map((l) => [l.no, l.title, l.opening, l.reserve ?? '', l.bidCount, l.top ?? '', l.result, l.price ?? '', l.buyer, l.cell, l.email]);
+    const rows = d.lots.map((l) => [l.no, l.title, l.opening, l.reserve ?? '', l.bidCount, l.roomCount, l.top ?? '', l.topSource, l.result, l.price ?? '', l.buyer, l.cell, l.email]);
     const lastRow = writeTable(ws, headerRow, cols, rows, widths, (row, ci) => {
-      if (ci !== 6) return null;
-      switch (row[6]) {
+      if (ci === 7) {
+        if (row[7] === 'Room') return { fill: 'FF17293D', font: 'FFFFFFFF' };
+        if (row[7] === 'Online') return { fill: 'FFFFD9BC', font: NAVY };
+        return null;
+      }
+      if (ci !== 8) return null;
+      switch (row[8]) {
         case 'Sold online': return { fill: 'FFE2F4EA', font: 'FF146C43' };
-        case 'Sold in the room': return { fill: 'FFEEF3F2', font: NAVY };
+        case 'Sold in the room': return { fill: 'FFE2F4EA', font: 'FF146C43' };
         case 'No sale': return { fill: 'FFEEF3F2', font: GREY };
         default: return { fill: 'FFFDF0E6', font: 'FFB8500F' };
       }
     });
-    if (rows.length) totalRow(ws, lastRow + 1, 2, 'Online sales total', 8, headerRow + 1, lastRow, RAND, cols.length);
+    if (rows.length) totalRow(ws, lastRow + 1, 2, 'Total sales (online + room)', 10, headerRow + 1, lastRow, RAND, cols.length);
   }
 
   // ---------- Online buyers ----------
@@ -218,15 +228,20 @@ export async function downloadAuctionXlsx(d: ReportData) {
 
   // ---------- Bid log ----------
   {
-    const widths = [22, 7, 34, 28, 16, 16];
-    const { ws, headerRow } = makeSheet(wb, logoId, 'Bid log', 'Every online bid', widths, d);
+    const widths = [22, 7, 34, 11, 28, 16, 16];
+    const { ws, headerRow } = makeSheet(wb, logoId, 'Bid log', 'Every bid, online and in the room', widths, d);
     const cols: Col[] = [
-      { header: 'Time' }, { header: 'Lot', align: 'center' }, { header: 'Description', wrap: true },
+      { header: 'Time' }, { header: 'Lot', align: 'center' }, { header: 'Description', wrap: true }, { header: 'Source', align: 'center' },
       { header: 'Bidder', wrap: true }, { header: 'Cell', wrap: true }, { header: 'Amount', fmt: RAND, align: 'right' },
     ];
-    const rows = d.bids.map((b) => [b.time, b.lot, b.lotTitle, b.bidder, b.cell, b.amount]);
-    if (rows.length === 0) rows.push(['No online bids.', '', '', '', '', '']);
-    writeTable(ws, headerRow, cols, rows, widths);
+    const rows = d.bids.map((b) => [b.time, b.lot, b.lotTitle, b.source, b.bidder, b.cell, b.amount]);
+    if (rows.length === 0) rows.push(['No bids.', '', '', '', '', '', '']);
+    writeTable(ws, headerRow, cols, rows, widths, (row, ci) => {
+      if (ci !== 3) return null;
+      if (row[3] === 'Room') return { fill: 'FF17293D', font: 'FFFFFFFF' };
+      if (row[3] === 'Online') return { fill: 'FFFFD9BC', font: NAVY };
+      return null;
+    });
   }
 
   const buf = await wb.xlsx.writeBuffer();

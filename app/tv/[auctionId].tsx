@@ -1,4 +1,4 @@
-// Hall screen: a big, read-only view of the lot on the block and the online bids, for a TV in the auction room.
+// Hall screen: a big, read-only view of the lot on the block with the online AND room bids, for a TV in the auction room.
 // Open it on a laptop (logged in as admin) connected to the TV. Add ?demo=1 to the address to preview it with sample data.
 import { View, Text, Image, StyleSheet, useWindowDimensions, Platform, Pressable } from 'react-native';
 import { Stack, useLocalSearchParams, router } from 'expo-router';
@@ -10,9 +10,10 @@ import { C } from '../../components/LiveViewerParts';
 import { formatZAR } from '../../components/LotCard';
 import { whenText } from '../../lib/admin-utils';
 import { LEGAL } from '../../lib/legal';
+import { fetchLotFeed } from '../../lib/room-bids';
 
 type TvLot = { id: string; title: string; photos: string[] | null; starting_bid: number; current_bid: number | null; closed: boolean | null; no_sale: boolean | null; winner_id: string | null };
-type TvBid = { id: string; amount: number; created_at: string; bidder_id: string; name: string };
+type TvBid = { id: string; amount: number; created_at: string; bidder_id: string | null; name: string; source: 'online' | 'room' };
 type TvSession = { status: string; title: string | null; scheduled_at: string | null; lot_ids: string[] | null; current_lot_index: number | null };
 
 const BG = '#0F1E2D';
@@ -32,10 +33,11 @@ const DEMO = {
     { id: 'd', title: 'VW Beetle 1967', photos: [svgPhoto('Photo', '#2b5a55')], starting_bid: 90000, current_bid: null, closed: false, no_sale: false, winner_id: null },
   ] as TvLot[],
   bids: [
-    { id: '4', amount: 235000, created_at: new Date().toISOString(), bidder_id: 'u1', name: 'Jane D.' },
-    { id: '3', amount: 230000, created_at: new Date(Date.now() - 9000).toISOString(), bidder_id: 'u2', name: 'Pieter' },
-    { id: '2', amount: 220000, created_at: new Date(Date.now() - 21000).toISOString(), bidder_id: 'u1', name: 'Jane D.' },
-    { id: '1', amount: 210000, created_at: new Date(Date.now() - 40000).toISOString(), bidder_id: 'u3', name: 'Thandi M.' },
+    { id: '5', amount: 250000, created_at: new Date().toISOString(), bidder_id: null, name: 'In the room', source: 'room' },
+    { id: '4', amount: 235000, created_at: new Date(Date.now() - 6000).toISOString(), bidder_id: 'u1', name: 'Jane D.', source: 'online' },
+    { id: '3', amount: 230000, created_at: new Date(Date.now() - 14000).toISOString(), bidder_id: null, name: 'In the room', source: 'room' },
+    { id: '2', amount: 220000, created_at: new Date(Date.now() - 28000).toISOString(), bidder_id: 'u1', name: 'Jane D.', source: 'online' },
+    { id: '1', amount: 210000, created_at: new Date(Date.now() - 45000).toISOString(), bidder_id: 'u3', name: 'Thandi M.', source: 'online' },
   ] as TvBid[],
 };
 
@@ -94,16 +96,13 @@ export default function TvScreen() {
   const lot = lots[idx] ?? null;
   const next = lots[idx + 1] ?? null;
 
+  // One list for the lot: online bids and bids from the room together, highest first.
   const { data: bidRows } = useQuery({
     queryKey: ['tv-bids', lot?.id],
-    queryFn: async () => {
-      const { data: safe, error: rpcErr } = await supabase.rpc('lot_bids', { p_lot: lot!.id });
-      if (!rpcErr && Array.isArray(safe)) {
-        return safe.map((r: any) => ({ id: String(r.id), amount: Number(r.amount), created_at: r.created_at, bidder_id: r.bidder_id, name: r.display_name || 'Bidder' })) as TvBid[];
-      }
-      const { data } = await supabase.from('bids').select('id, amount, created_at, bidder_id, users(full_name, screen_name)').eq('lot_id', lot!.id).order('amount', { ascending: false }).limit(15);
-      return ((data ?? []) as any[]).map((b) => ({ id: String(b.id), amount: b.amount, created_at: b.created_at, bidder_id: b.bidder_id, name: shortName(b.users?.full_name, b.users?.screen_name) })) as TvBid[];
-    },
+    queryFn: async () => (await fetchLotFeed(lot!.id)).map((b) => ({
+      id: b.id, amount: b.amount, created_at: b.created_at, bidder_id: b.bidder_id,
+      name: b.source === 'room' ? 'In the room' : b.users?.screen_name || 'Bidder', source: b.source ?? 'online',
+    })) as TvBid[],
     enabled: enabled && !!lot?.id, refetchInterval: 2000,
   });
   const bids: TvBid[] = isDemo ? DEMO.bids : bidRows ?? [];
@@ -136,6 +135,10 @@ export default function TvScreen() {
   const noSale = !!lot?.no_sale && !sold;
   const closed = !!lot?.closed || sold || noSale;
   const price = top ? top.amount : lot?.starting_bid ?? 0;
+  const topRoom = top?.source === 'room';
+  const onlineCount = bids.filter((b) => b.source === 'online').length;
+  const roomCount = bids.filter((b) => b.source === 'room').length;
+  const winnerName = bids.find((b) => b.source === 'online' && b.bidder_id === lot?.winner_id)?.name ?? 'Bidder';
 
   const Header = (
     <View style={[s.header, { marginBottom: f(24) }]}>
@@ -187,7 +190,7 @@ export default function TvScreen() {
         <View style={s.center}>
           <Text style={[s.big, { fontSize: f(80) }]}>Starting soon</Text>
           {!!sess?.scheduled_at && <Text style={[s.sub, { fontSize: f(40), marginTop: f(20) }]}>{whenText(sess.scheduled_at)}</Text>}
-          <Text style={[s.sub, { fontSize: f(30), marginTop: f(20) }]}>Bids placed online will appear on this screen.</Text>
+          <Text style={[s.sub, { fontSize: f(30), marginTop: f(20) }]}>Online bids and bids from the room will appear on this screen.</Text>
         </View>
       </Shell>
     );
@@ -219,35 +222,48 @@ export default function TvScreen() {
             {closed ? (
               <>
                 <Text style={[s.kicker, { fontSize: f(28) }]}>RESULT</Text>
-                <Text style={[s.result, { fontSize: f(84), color: sold ? GREEN : '#fff' }]}>{sold ? 'SOLD' : noSale ? 'NO SALE' : 'SOLD'}</Text>
-                {sold && <Text style={[s.price, { fontSize: f(96) }]}>{formatZAR(lot?.current_bid ?? top?.amount ?? 0)}</Text>}
+                <Text style={[s.result, { fontSize: f(80), color: noSale ? '#fff' : GREEN }]}>{sold ? 'SOLD ONLINE' : noSale ? 'NO SALE' : 'SOLD IN THE ROOM'}</Text>
+                {!noSale && <Text style={[s.price, { fontSize: f(96) }]} numberOfLines={1} adjustsFontSizeToFit>{formatZAR(sold ? lot?.current_bid ?? top?.amount ?? 0 : top?.amount ?? lot?.current_bid ?? 0)}</Text>}
                 <Text style={[s.sub, { fontSize: f(34), marginTop: f(8) }]}>
-                  {sold ? `Online buyer: ${bids.find((b) => b.bidder_id === lot?.winner_id)?.name ?? 'Bidder'}` : noSale ? 'Passed in' : 'Sold in the room'}
+                  {sold ? `Online buyer: ${winnerName}` : noSale ? 'Passed in' : 'Bought by a bidder in the room'}
                 </Text>
               </>
             ) : (
               <>
-                <Text style={[s.kicker, { fontSize: f(28) }]}>{top ? 'CURRENT BID' : 'OPENING BID'}</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <Text style={[s.kicker, { fontSize: f(28) }]}>{top ? 'HIGHEST BID' : 'OPENING BID'}</Text>
+                  {top && (
+                    <View style={[s.tag, topRoom ? s.tagRoom : s.tagOnline, { marginLeft: f(18), paddingHorizontal: f(20), paddingVertical: f(6), borderRadius: f(30) }]}>
+                      <Text style={[s.tagTxt, { fontSize: f(30), color: topRoom ? C.ink : '#fff' }]}>{topRoom ? 'ROOM BID' : 'ONLINE BID'}</Text>
+                    </View>
+                  )}
+                </View>
                 <Text style={[s.price, { fontSize: f(128) }]} numberOfLines={1} adjustsFontSizeToFit>{formatZAR(price)}</Text>
-                <Text style={[s.lead, { fontSize: f(36) }]}>{top ? `Leading online: ${top.name}` : 'No online bids yet'}</Text>
+                <Text style={[s.lead, { fontSize: f(36) }]}>{top ? (topRoom ? 'Leading: a bidder in the room' : `Leading online: ${top.name}`) : 'No bids yet'}</Text>
               </>
             )}
             <Text style={[s.fee, { fontSize: f(22), marginTop: f(14) }]}>Plus buyer's commission of {LEGAL.buyerCommissionPct}% {LEGAL.vatNote}.</Text>
           </View>
 
           <View style={[s.panel, { borderRadius: f(24), padding: f(24), marginTop: f(20), flex: 1 }]}>
-            <Text style={[s.kicker, { fontSize: f(26), marginBottom: f(10) }]}>ONLINE BIDS</Text>
+            <Text style={[s.kicker, { fontSize: f(26), marginBottom: f(10) }]}>BIDS · {onlineCount} ONLINE · {roomCount} ROOM</Text>
             {bids.length === 0 ? (
-              <Text style={[s.sub, { fontSize: f(30) }]}>Waiting for the first online bid…</Text>
-            ) : bids.slice(0, 6).map((b, i) => (
-              <View key={b.id} style={[s.bidRow, { paddingVertical: f(11) }, i > 0 && s.bidRowLine]}>
-                <View style={{ flex: 1 }}>
-                  <Text style={[s.bidName, { fontSize: f(34) }, i === 0 && { color: C.orange }]} numberOfLines={1}>{b.name}</Text>
-                  <Text style={[s.bidMeta, { fontSize: f(22) }]}>ONLINE · {clock(b.created_at)}</Text>
+              <Text style={[s.sub, { fontSize: f(30) }]}>Waiting for the first bid…</Text>
+            ) : bids.slice(0, 6).map((b, i) => {
+              const room = b.source === 'room';
+              return (
+                <View key={b.id} style={[s.bidRow, { paddingVertical: f(11) }, i > 0 && s.bidRowLine]}>
+                  <View style={[s.tag, room ? s.tagRoom : s.tagOnline, { paddingHorizontal: f(14), paddingVertical: f(5), borderRadius: f(20), marginRight: f(16), minWidth: f(130), alignItems: 'center' }]}>
+                    <Text style={[s.tagTxt, { fontSize: f(22), color: room ? C.ink : '#fff' }]}>{room ? 'ROOM' : 'ONLINE'}</Text>
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[s.bidName, { fontSize: f(34) }, i === 0 && { color: C.orange }]} numberOfLines={1}>{b.name}</Text>
+                    <Text style={[s.bidMeta, { fontSize: f(22) }]}>{clock(b.created_at)}</Text>
+                  </View>
+                  <Text style={[s.bidAmt, { fontSize: f(40) }, i === 0 && { color: C.orange }]}>{formatZAR(b.amount)}</Text>
                 </View>
-                <Text style={[s.bidAmt, { fontSize: f(40) }, i === 0 && { color: C.orange }]}>{formatZAR(b.amount)}</Text>
-              </View>
-            ))}
+              );
+            })}
           </View>
         </View>
       </View>
@@ -291,4 +307,8 @@ const s = StyleSheet.create({
   bidAmt: { color: '#fff', fontWeight: '900' },
   footer: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   hint: { color: 'rgba(255,255,255,0.45)' },
+  tag: { alignSelf: 'flex-start' },
+  tagOnline: { backgroundColor: C.orange },
+  tagRoom: { backgroundColor: '#E8F1EF' },
+  tagTxt: { fontWeight: '900', letterSpacing: 1.5 },
 });

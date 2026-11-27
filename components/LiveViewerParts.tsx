@@ -39,11 +39,25 @@ export type LiveBid = {
   id: string;
   amount: number;
   created_at: string;
-  bidder_id: string;
+  bidder_id: string | null;
+  source?: 'online' | 'room'; // who made the bid: someone online, or someone in the auction hall
   users?: { full_name?: string | null; screen_name?: string | null } | null;
 };
 
-const bidderName = (b: LiveBid | undefined | null) => b?.users?.screen_name || b?.users?.full_name || 'Bidder';
+export const isRoom = (b: LiveBid | undefined | null) => b?.source === 'room';
+export const bidderName = (b: LiveBid | undefined | null) => (isRoom(b) ? 'In the room' : b?.users?.screen_name || b?.users?.full_name || 'Bidder');
+export const sourceLabel = (b: LiveBid | undefined | null) => (isRoom(b) ? 'ROOM BID' : 'ONLINE BID');
+
+// Small tag that says where a bid came from. Used wherever a bid or price is shown.
+export function SourceTag({ bid, big }: { bid: LiveBid | undefined | null; big?: boolean }) {
+  if (!bid) return null;
+  const room = isRoom(bid);
+  return (
+    <View style={[s.tag, room ? s.tagRoom : s.tagOnline, big && { paddingHorizontal: 12, paddingVertical: 5 }]}>
+      <Text style={[s.tagTxt, room ? { color: '#fff' } : { color: C.ink }, big && { fontSize: 14 }]}>{sourceLabel(bid)}</Text>
+    </View>
+  );
+}
 const clock = (iso: string) =>
   new Date(iso).toLocaleTimeString('en-ZA', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
 
@@ -148,8 +162,9 @@ export function BidPanel({
   const sold = !!lot.winner_id;
   const noSale = !!lot.no_sale && !sold;
   const closed = !!lot.closed || sold || noSale;
-  const iAmTop = !!userId && top?.bidder_id === userId;
-  const iHaveBid = !!userId && bids.some((b) => b.bidder_id === userId);
+  const topIsRoom = isRoom(top);
+  const iAmTop = !!userId && !topIsRoom && top?.bidder_id === userId;
+  const iHaveBid = !!userId && bids.some((b) => !isRoom(b) && b.bidder_id === userId);
 
   async function press() {
     if (!userId) { onLogin(); return; }
@@ -165,18 +180,21 @@ export function BidPanel({
       {totalLots > 0 && <Text style={s.kicker}>LOT {lotNumber} OF {totalLots}</Text>}
       <Text style={s.panelTitle}>{lot.title}</Text>
 
-      <Text style={[s.kicker, { marginTop: 18 }]}>{top ? 'CURRENT BID' : 'OPENING BID'}</Text>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 18, marginBottom: 6, flexWrap: 'wrap' }}>
+        <Text style={[s.kicker, { marginBottom: 0 }]}>{top ? 'HIGHEST BID' : 'OPENING BID'}</Text>
+        <SourceTag bid={top} big />
+      </View>
       <Text style={s.price}>{formatZAR(top ? top.amount : lot.starting_bid)}</Text>
       <Text style={s.feeNote}>Buyer's commission of {LEGAL.buyerCommissionPct}% {LEGAL.vatNote} is added to the hammer price.</Text>
-      {top && !iAmTop && <Text style={s.leading}>Leading: {bidderName(top)}</Text>}
+      {top && !iAmTop && <Text style={s.leading}>{topIsRoom ? 'Leading: a bidder in the room' : `Leading online: ${bidderName(top)}`}</Text>}
       {!top && <Text style={s.leading}>No bids yet. Be the first!</Text>}
 
       {closed ? (
         <View style={[s.box, sold ? s.boxGood : s.boxNeutral]}>
           <Text style={[s.boxTitle, { color: sold ? C.green : C.ink }]}>
-            {sold ? `SOLD for ${formatZAR(lot.current_bid ?? top?.amount ?? 0)}` : noSale ? 'NO SALE' : 'SOLD IN THE ROOM'}
+            {sold ? `SOLD ONLINE for ${formatZAR(lot.current_bid ?? top?.amount ?? 0)}` : noSale ? 'NO SALE' : `SOLD IN THE ROOM${top ? ' for ' + formatZAR(top.amount) : ''}`}
           </Text>
-          {sold && <Text style={s.boxSub}>{iAmTop ? 'Congratulations, you won this lot!' : `Winning bidder: ${bidderName(top)}`}</Text>}
+          {sold && <Text style={s.boxSub}>{lot.winner_id === userId ? 'Congratulations, you won this lot!' : `Winning bidder: ${bidderName(top)}`}</Text>}
         </View>
       ) : iAmTop ? (
         // You already lead: no bid controls until someone outbids you.
@@ -196,7 +214,7 @@ export function BidPanel({
         <>
           {iHaveBid && (
             <View style={[s.box, s.boxBad]}>
-              <Text style={[s.boxTitle, { color: C.red }]}>You have been outbid</Text>
+              <Text style={[s.boxTitle, { color: C.red }]}>{topIsRoom ? 'You have been outbid by a bid in the room' : 'You have been outbid'}</Text>
             </View>
           )}
           <View style={s.stepper}>
@@ -225,7 +243,7 @@ export function BidPanel({
 export function BidHistory({ bids, userId }: { bids: LiveBid[]; userId: string | null }) {
   return (
     <View style={s.panel}>
-      <Text style={s.kicker}>BIDS ON THIS LOT</Text>
+      <Text style={s.kicker}>BIDS ON THIS LOT (ONLINE AND ROOM)</Text>
       {bids.length === 0 ? (
         <Text style={s.noBids}>No bids yet.</Text>
       ) : (
@@ -233,9 +251,12 @@ export function BidHistory({ bids, userId }: { bids: LiveBid[]; userId: string |
           <View key={b.id} style={[s.bidRow, idx === 0 && s.bidRowTop]}>
             <View style={{ flex: 1 }}>
               <Text style={s.bidName} numberOfLines={1}>
-                {userId && b.bidder_id === userId ? 'You' : bidderName(b)}
+                {!isRoom(b) && userId && b.bidder_id === userId ? 'You' : bidderName(b)}
               </Text>
-              <Text style={s.bidTime}>{clock(b.created_at)}</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 3 }}>
+                <SourceTag bid={b} />
+                <Text style={[s.bidTime, { marginTop: 0 }]}>{clock(b.created_at)}</Text>
+              </View>
             </View>
             <Text style={[s.bidAmt, idx === 0 && { color: C.orangeDark }]}>{formatZAR(b.amount)}</Text>
           </View>
@@ -248,8 +269,9 @@ export function BidHistory({ bids, userId }: { bids: LiveBid[]; userId: string |
 /* ------------------------------------------------------------------ lots */
 
 function statusOf(l: LiveLot, activeId: string | null): { text: string; color: string } {
-  if (l.winner_id) return { text: 'SOLD', color: C.green };
+  if (l.winner_id) return { text: 'SOLD ONLINE', color: C.green };
   if (l.no_sale) return { text: 'NO SALE', color: C.sub };
+  if (l.closed) return { text: 'SOLD IN THE ROOM', color: C.green };
   if (activeId && l.id === activeId) return { text: 'ON THE BLOCK', color: C.orangeDark };
   return { text: `Opening bid ${formatZAR(l.starting_bid)}`, color: C.sub };
 }
@@ -351,6 +373,12 @@ const s = StyleSheet.create({
   bidBtn: { backgroundColor: C.orange, borderRadius: 18, minHeight: 68, alignItems: 'center', justifyContent: 'center', marginTop: 16 },
   bidBtnTxt: { color: C.ink, fontSize: 24, fontWeight: '900', letterSpacing: 0.4 },
   msg: { marginTop: 12, fontSize: 16, fontWeight: '700', textAlign: 'center' },
+
+  // where a bid came from
+  tag: { alignSelf: 'flex-start', borderRadius: 99, paddingHorizontal: 9, paddingVertical: 3 },
+  tagOnline: { backgroundColor: '#FFD9BC' },
+  tagRoom: { backgroundColor: C.ink },
+  tagTxt: { fontSize: 11.5, fontWeight: '900', letterSpacing: 0.8 },
 
   // bid history
   bidRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, borderTopWidth: 1, borderTopColor: C.line },

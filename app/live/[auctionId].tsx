@@ -1,4 +1,4 @@
-import { View, Text, Pressable, ActivityIndicator, Alert, Platform, StyleSheet, ScrollView, Image, useWindowDimensions } from 'react-native';
+import { View, Text, TextInput, Pressable, ActivityIndicator, Alert, Platform, StyleSheet, ScrollView, Image, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Stack, useLocalSearchParams, router } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
@@ -9,7 +9,8 @@ import { Colors } from '../../lib/theme';
 import { getAgoraToken, markSessionLive, markSessionEnded, HOST_UID } from '../../lib/agora';
 import { formatZAR } from '../../components/LotCard';
 import { confirmAsync } from '../../lib/admin-utils';
-import { C, PhotoViewer, LotGallery, BidPanel, BidHistory, LotsList, LotGrid, type LiveLot, type LiveBid } from '../../components/LiveViewerParts';
+import { C, PhotoViewer, LotGallery, BidPanel, BidHistory, LotsList, LotGrid, SourceTag, isRoom, bidderName, type LiveLot, type LiveBid } from '../../components/LiveViewerParts';
+import { fetchLotFeed, friendlyBidError, addRoomBid, undoLastRoomBid, rand } from '../../lib/room-bids';
 
 const APP_ID = process.env.EXPO_PUBLIC_AGORA_APP_ID ?? '';
 const VIDEO_ID = 'agora-video';
@@ -90,6 +91,9 @@ export default function LiveRoom() {
   const [previewing, setPreviewing] = useState(false);
 
   const [lotIndex, setLotIndex] = useState(0);
+  const [roomMsg, setRoomMsg] = useState<{ text: string; ok: boolean } | null>(null);
+  const [roomBusy, setRoomBusy] = useState(false);
+  const [roomCustom, setRoomCustom] = useState('');
 
   // Track the session's real status (scheduled/live/ended) regardless — used to gate bidder access
   const { data: sessionInfo } = useQuery({
@@ -155,23 +159,6 @@ export default function LiveRoom() {
     placeholderData: (prev) => prev, // keep showing the previous lot while the next one loads (no flicker)
   });
 
-  const { data: topBid } = useQuery({
-    queryKey: ['live-top-bid', activeLotId],
-    queryFn: async () => {
-      if (!activeLotId) return null;
-      const { data } = await supabase
-        .from('bids')
-        .select('amount, users(screen_name, full_name)')
-        .eq('lot_id', activeLotId)
-        .order('amount', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      return data as { amount: number; users: { screen_name: string | null; full_name: string } | null } | null;
-    },
-    enabled: !!activeLotId && canAccess,
-    refetchInterval: 3000,
-  });
-
   const totalLots = liveSession?.lot_ids?.length ?? 0;
 
   // Every lot in this auction, in running order — drives the pre-live photo
@@ -190,29 +177,11 @@ export default function LiveRoom() {
     refetchInterval: 6000,
   });
 
-  // Bids on the lot that is on the block (highest first).
+  // Every bid on the lot that is on the block, online AND from the room, highest first.
   const bidLotId = currentLot?.id ?? null;
   const { data: liveBids } = useQuery({
     queryKey: ['live-bids', bidLotId],
-    queryFn: async () => {
-      // Preferred: a database function that returns each bid with a safe display name
-      // (screen name, or first name + initial). Other bidders' contact details stay private.
-      const { data: safe, error: rpcErr } = await supabase.rpc('lot_bids', { p_lot: bidLotId });
-      if (!rpcErr && Array.isArray(safe)) {
-        return safe.map((r: any) => ({
-          id: r.id, amount: Number(r.amount), created_at: r.created_at, bidder_id: r.bidder_id,
-          users: { screen_name: r.display_name },
-        })) as LiveBid[];
-      }
-      // Fallback while the function is not installed yet: staff see names, bidders see only their own.
-      const { data } = await supabase
-        .from('bids')
-        .select('id, amount, created_at, bidder_id, users(full_name, screen_name)')
-        .eq('lot_id', bidLotId)
-        .order('amount', { ascending: false })
-        .limit(15);
-      return (data ?? []) as unknown as LiveBid[];
-    },
+    queryFn: () => fetchLotFeed(bidLotId as string),
     enabled: !!bidLotId && canAccess,
     refetchInterval: 2500,
   });
@@ -227,20 +196,22 @@ export default function LiveRoom() {
     if (!session) return 'Please log in to bid.';
     if (!currentLot) return 'No lot is on the block right now.';
     if (currentLot.closed || currentLot.winner_id || currentLot.no_sale) return 'Bidding on this lot has closed.';
-    // Re-check the latest bid just before inserting (another bidder may have beaten us to it).
-    const { data: latest } = await supabase
-      .from('bids').select('amount, bidder_id').eq('lot_id', currentLot.id)
-      .order('amount', { ascending: false }).limit(1).maybeSingle();
-    if (latest && latest.bidder_id === session.user.id) {
+    // Re-check the latest price just before inserting. It may have moved: another bidder, or a bid in the room.
+    const feed = await fetchLotFeed(currentLot.id);
+    const latest = feed[0];
+    if (latest && !isRoom(latest) && latest.bidder_id === session.user.id) {
       queryClient.invalidateQueries({ queryKey: ['live-bids'] });
       return 'You are already the highest bidder.';
     }
     if (latest && amount <= latest.amount) {
       queryClient.invalidateQueries({ queryKey: ['live-bids'] });
-      return `Someone just bid ${'R' + Math.round(latest.amount).toLocaleString('en-ZA')}. Please bid again.`;
+      return `${isRoom(latest) ? 'A bid was just made in the room' : 'Someone just bid'}: ${rand(latest.amount)}. Please bid again.`;
     }
     const { error: bidErr } = await supabase.from('bids').insert({ lot_id: currentLot.id, bidder_id: session.user.id, amount });
     if (bidErr) {
+      queryClient.invalidateQueries({ queryKey: ['live-bids'] });
+      const friendly = friendlyBidError(bidErr.message);
+      if (friendly) return friendly;
       if (/row-level security|policy/i.test(bidErr.message)) return 'Your account has not been approved to bid yet. Please contact HT Auctions.';
       return bidErr.message;
     }
@@ -306,10 +277,10 @@ export default function LiveRoom() {
     const top = liveBids?.[0];
     let patch: Record<string, unknown>;
     if (kind === 'online') {
-      if (!top) return;
+      if (!top || isRoom(top)) return;
       patch = { closed: true, no_sale: false, winner_id: top.bidder_id, current_bid: top.amount };
     } else if (kind === 'room') {
-      patch = { closed: true, no_sale: false, winner_id: null };
+      patch = { closed: true, no_sale: false, winner_id: null, ...(top && isRoom(top) ? { current_bid: top.amount } : {}) };
     } else {
       patch = { closed: true, no_sale: true, winner_id: null };
     }
@@ -317,6 +288,28 @@ export default function LiveRoom() {
     if (e) { Alert.alert('Could not update the lot', e.message); return; }
     queryClient.invalidateQueries({ queryKey: ['live-lot'] });
     queryClient.invalidateQueries({ queryKey: ['live-all-lots'] });
+  }
+
+  // Bid clerk: record a bid that was made in the room.
+  async function placeRoomBid(amount: number) {
+    if (!currentLot || roomBusy) return;
+    setRoomBusy(true); setRoomMsg(null);
+    const err = await addRoomBid(currentLot.id, amount);
+    setRoomBusy(false);
+    queryClient.invalidateQueries({ queryKey: ['live-bids'] });
+    if (err) { setRoomMsg({ text: err, ok: false }); return; }
+    setRoomCustom('');
+    setRoomMsg({ text: `Room bid recorded: ${rand(amount)}`, ok: true });
+    setTimeout(() => setRoomMsg(null), 3000);
+  }
+
+  async function undoRoomBid() {
+    if (!currentLot) return;
+    const ok = await confirmAsync('Remove the last room bid?', 'Use this only if the amount was typed wrongly. The price goes back to the bid before it.', 'Remove');
+    if (!ok) return;
+    const err = await undoLastRoomBid(currentLot.id);
+    queryClient.invalidateQueries({ queryKey: ['live-bids'] });
+    setRoomMsg(err ? { text: err, ok: false } : { text: 'Last room bid removed', ok: true });
   }
 
   async function reopenLot() {
@@ -549,7 +542,15 @@ export default function LiveRoom() {
     if (ok) leave();
   }
 
-  const bidName = (b: LiveBid) => b.users?.screen_name ?? b.users?.full_name ?? 'Bidder';
+  const bidName = (b: LiveBid) => bidderName(b);
+  const hostTop = liveBids?.[0];
+  const hostTopRoom = isRoom(hostTop);
+  const onlineCount = (liveBids ?? []).filter((b) => !isRoom(b)).length;
+  const roomCount = (liveBids ?? []).filter((b) => isRoom(b)).length;
+  const hostInc = currentLot?.increment && currentLot.increment > 0 ? currentLot.increment : 100;
+  const hostNext = hostTop ? hostTop.amount + hostInc : currentLot?.starting_bid ?? 0;
+  const hostBase = hostTop ? hostTop.amount : currentLot?.starting_bid ?? 0;
+  const customAmount = Number(roomCustom.replace(/[^0-9]/g, ''));
   const hostConsoleEl = currentLot ? (
     <View style={s.hCard}>
       <Text style={s.hKicker}>LOT {Math.max(1, (lotIds?.indexOf(currentLot.id) ?? lotIndex) + 1)} OF {Math.max(totalLots, 1)} · ON THE BLOCK</Text>
@@ -563,41 +564,92 @@ export default function LiveRoom() {
         </ScrollView>
       )}
 
-      <Text style={[s.hKicker, { marginTop: 18 }]}>{liveBids?.length ? 'HIGHEST ONLINE BID' : 'OPENING BID'}</Text>
-      <Text style={s.hPrice}>{formatZAR(liveBids?.[0]?.amount ?? currentLot.starting_bid)}</Text>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 18, flexWrap: 'wrap' }}>
+        <Text style={s.hKicker}>{hostTop ? 'HIGHEST BID' : 'OPENING BID'}</Text>
+        <SourceTag bid={hostTop} big />
+      </View>
+      <Text style={s.hPrice}>{formatZAR(hostTop?.amount ?? currentLot.starting_bid)}</Text>
       <Text style={s.hSub}>
-        {liveBids?.length ? `${liveBids.length} online bid${liveBids.length === 1 ? '' : 's'}` : 'No online bids yet'}
+        {hostTop ? `${onlineCount} online bid${onlineCount === 1 ? '' : 's'} · ${roomCount} room bid${roomCount === 1 ? '' : 's'}` : 'No bids yet'}
       </Text>
 
       {(liveBids ?? []).slice(0, 5).map((b, i) => (
         <View key={b.id} style={s.hBidRow}>
-          <Text style={[s.hBidName, i === 0 && { color: C.orangeDark }]} numberOfLines={1}>{bidName(b)}</Text>
+          <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <SourceTag bid={b} />
+            <Text style={[s.hBidName, i === 0 && { color: C.orangeDark }]} numberOfLines={1}>{bidName(b)}</Text>
+          </View>
           <Text style={[s.hBidAmt, i === 0 && { color: C.orangeDark }]}>{formatZAR(b.amount)}</Text>
         </View>
       ))}
+
+      {status === 'live' && !lotClosed && (
+        <View style={s.roomBox}>
+          <Text style={s.roomKicker}>BID FROM THE ROOM</Text>
+          <Text style={s.roomHint}>When the auctioneer accepts a bid in the hall, tap it here. It goes on the TV and online bidders see the new price at once.</Text>
+          <Pressable onPress={() => placeRoomBid(hostNext)} disabled={roomBusy} style={[s.roomBtn, roomBusy && { opacity: 0.6 }]}>
+            <Text style={s.roomBtnTxt}>{hostTop ? 'ROOM BID' : 'ROOM OPENING BID'}  {formatZAR(hostNext)}</Text>
+          </Pressable>
+          <Text style={s.roomSmall}>Bigger jump:</Text>
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            {[5, 10, 50].map((k) => (
+              <Pressable key={k} onPress={() => placeRoomBid(hostBase + hostInc * k)} disabled={roomBusy} style={s.roomChip}>
+                <Text style={s.roomChipAmt}>{formatZAR(hostBase + hostInc * k)}</Text>
+                <Text style={s.roomChipSub}>+{formatZAR(hostInc * k)}</Text>
+              </Pressable>
+            ))}
+          </View>
+          <View style={{ flexDirection: 'row', gap: 8, marginTop: 10 }}>
+            <TextInput
+              value={roomCustom} onChangeText={setRoomCustom} keyboardType="numeric" placeholder="Other amount, e.g. 56500"
+              placeholderTextColor="#7C8F9A" style={s.roomInput} onSubmitEditing={() => customAmount > 0 && placeRoomBid(customAmount)}
+            />
+            <Pressable onPress={() => customAmount > 0 && placeRoomBid(customAmount)} disabled={roomBusy || !(customAmount > 0)} style={[s.roomSet, (roomBusy || !(customAmount > 0)) && { opacity: 0.4 }]}>
+              <Text style={s.roomSetTxt}>Record</Text>
+            </Pressable>
+          </View>
+          {roomCount > 0 && (
+            <Pressable onPress={undoRoomBid} style={{ marginTop: 10, alignSelf: 'flex-start' }}>
+              <Text style={s.roomUndo}>Typed it wrongly? Remove the last room bid</Text>
+            </Pressable>
+          )}
+          {roomMsg && <Text style={[s.roomMsg, { color: roomMsg.ok ? C.green : C.red }]}>{roomMsg.text}</Text>}
+        </View>
+      )}
 
       {status === 'live' && (
         <View style={{ marginTop: 16, gap: 10 }}>
           {lotClosed ? (
             <>
-              <View style={[s.hResultBox, currentLot.winner_id ? { backgroundColor: C.greenBg } : { backgroundColor: '#EEF3F2' }]}>
-                <Text style={[s.hResult, currentLot.winner_id && { color: C.green }]}>
+              <View style={[s.hResultBox, currentLot.winner_id || !currentLot.no_sale ? { backgroundColor: C.greenBg } : { backgroundColor: '#EEF3F2' }]}>
+                <Text style={[s.hResult, (currentLot.winner_id || !currentLot.no_sale) && { color: C.green }]}>
                   {currentLot.winner_id
-                    ? `SOLD online to ${liveBids?.find((b) => b.bidder_id === currentLot.winner_id) ? bidName(liveBids.find((b) => b.bidder_id === currentLot.winner_id)!) : 'bidder'} for ${formatZAR(currentLot.current_bid)}`
-                    : currentLot.no_sale ? 'NO SALE' : 'SOLD IN THE ROOM'}
+                    ? `SOLD ONLINE to ${liveBids?.find((b) => !isRoom(b) && b.bidder_id === currentLot.winner_id) ? bidName(liveBids.find((b) => !isRoom(b) && b.bidder_id === currentLot.winner_id)!) : 'bidder'} for ${formatZAR(currentLot.current_bid)}`
+                    : currentLot.no_sale ? 'NO SALE' : `SOLD IN THE ROOM${hostTop ? ' for ' + formatZAR(hostTop.amount) : ''}`}
                 </Text>
               </View>
               <Pressable onPress={reopenLot} style={s.hGhost}><Text style={s.hGhostTxt}>Reopen this lot</Text></Pressable>
             </>
           ) : (
             <>
-              <Pressable onPress={() => closeLot('online')} disabled={!liveBids?.length} style={[s.hSold, !liveBids?.length && { opacity: 0.35 }]}>
+              <Pressable
+                onPress={() => closeLot(hostTopRoom ? 'room' : 'online')} disabled={!hostTop}
+                style={[s.hSold, !hostTop && { opacity: 0.35 }]}
+              >
                 <Text style={s.hSoldTxt}>
-                  {liveBids?.length ? `Sold online: ${bidName(liveBids[0])} · ${formatZAR(liveBids[0].amount)}` : 'Sold online (no online bids)'}
+                  {!hostTop ? 'SOLD (no bids yet)' : hostTopRoom ? `SOLD IN THE ROOM · ${formatZAR(hostTop.amount)}` : `SOLD ONLINE: ${bidName(hostTop)} · ${formatZAR(hostTop.amount)}`}
                 </Text>
               </Pressable>
               <View style={{ flexDirection: 'row', gap: 10 }}>
-                <Pressable onPress={() => closeLot('room')} style={[s.hGhost, { flex: 1 }]}><Text style={s.hGhostTxt}>Sold in the room</Text></Pressable>
+                {!hostTopRoom && (
+                  <Pressable
+                    onPress={async () => {
+                      if (hostTop && !(await confirmAsync('Sold in the room instead?', `The highest bid is an ONLINE bid of ${formatZAR(hostTop.amount)}. Only continue if the room bought it at a price you did not record.`, 'Sold in the room'))) return;
+                      closeLot('room');
+                    }}
+                    style={[s.hGhost, { flex: 1 }]}
+                  ><Text style={s.hGhostTxt}>{hostTop ? 'Sold in the room instead' : 'Sold in the room'}</Text></Pressable>
+                )}
                 <Pressable onPress={() => closeLot('nosale')} style={[s.hGhost, { flex: 1 }]}><Text style={s.hGhostTxt}>No sale</Text></Pressable>
               </View>
             </>
@@ -953,6 +1005,20 @@ const s = StyleSheet.create({
   hGhostTxt: { color: C.ink, fontSize: 15.5, fontWeight: '800' },
   hNext: { backgroundColor: C.orange, borderRadius: 14, minHeight: 50, alignItems: 'center', justifyContent: 'center' },
   hNextTxt: { color: C.ink, fontSize: 16.5, fontWeight: '900' },
+  roomBox: { backgroundColor: '#EEF3F2', borderRadius: 16, padding: 14, marginTop: 16, borderWidth: 2, borderColor: C.ink },
+  roomKicker: { color: C.ink, fontSize: 13, fontWeight: '900', letterSpacing: 1.4 },
+  roomHint: { color: C.sub, fontSize: 13.5, lineHeight: 19, marginTop: 4, marginBottom: 10 },
+  roomBtn: { backgroundColor: C.ink, borderRadius: 14, minHeight: 62, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 10 },
+  roomBtnTxt: { color: '#fff', fontSize: 20, fontWeight: '900', textAlign: 'center' },
+  roomSmall: { color: C.sub, fontSize: 13, fontWeight: '700', marginTop: 12, marginBottom: 6 },
+  roomChip: { flex: 1, backgroundColor: '#fff', borderWidth: 1.5, borderColor: C.ink, borderRadius: 12, paddingVertical: 8, alignItems: 'center' },
+  roomChipAmt: { color: C.ink, fontSize: 14.5, fontWeight: '900' },
+  roomChipSub: { color: C.sub, fontSize: 12, marginTop: 1 },
+  roomInput: { flex: 1, borderWidth: 1.5, borderColor: C.line, backgroundColor: '#fff', borderRadius: 12, paddingHorizontal: 12, minHeight: 48, fontSize: 16, color: C.ink },
+  roomSet: { backgroundColor: C.orange, borderRadius: 12, paddingHorizontal: 18, minHeight: 48, alignItems: 'center', justifyContent: 'center' },
+  roomSetTxt: { color: C.ink, fontSize: 15.5, fontWeight: '900' },
+  roomUndo: { color: C.red, fontSize: 13.5, fontWeight: '700', textDecorationLine: 'underline' },
+  roomMsg: { marginTop: 10, fontSize: 15, fontWeight: '800' },
   hostBidRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 6, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.08)' },
   hostBidName: { color: 'rgba(255,255,255,0.85)', fontSize: 15, flex: 1 },
   hostBidAmt: { color: 'rgba(255,255,255,0.85)', fontSize: 15, fontWeight: '700' },

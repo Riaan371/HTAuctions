@@ -37,6 +37,7 @@ export async function deleteEventCompletely(auctionId: string) {
   const ids = (lots ?? []).map((l: any) => l.id);
   const paths = (lots ?? []).flatMap((l: any) => (l.photos ?? []).map(storagePathFromUrl).filter(Boolean)) as string[];
   if (paths.length) await supabase.storage.from('lot-photos').remove(paths);
+  if (ids.length) await supabase.from('room_bids').delete().in('lot_id', ids);
   if (ids.length) await supabase.from('bids').delete().in('lot_id', ids);
   if (ids.length) {
     const { error } = await supabase.from('lots').delete().in('id', ids);

@@ -128,13 +128,14 @@ export default function AdminEvents() {
     }
   }
 
-  // Start over: for test runs. Deletes every online bid and result and puts every lot back on the block.
+  // Start over: for test runs. Deletes every online and room bid and result and puts every lot back on the block.
   async function onStartOver(ev: EventRow) {
-    const ok = await confirmAsync('Start over?', 'This deletes ALL online bids and results for this auction and puts every lot back on the block. The lots and their photos stay. This cannot be undone.', 'Start over');
+    const ok = await confirmAsync('Start over?', 'This deletes ALL online and room bids and results for this auction and puts every lot back on the block. The lots and their photos stay. This cannot be undone.', 'Start over');
     if (!ok) return;
     try {
       const ids = ev.lot_ids ?? [];
       if (ids.length) {
+        await supabase.from('room_bids').delete().in('lot_id', ids);
         const { error: bErr } = await supabase.from('bids').delete().in('lot_id', ids);
         if (bErr) throw new Error('Could not clear the bids: ' + bErr.message);
         const { data: left } = await supabase.from('bids').select('id').in('lot_id', ids).limit(1);
